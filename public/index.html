@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FarmIQ — Poultry Management</title>
+  <link rel="stylesheet" href="/style.css?v=20260508e"/>
+</head>
+<body>
+
+<!-- ══ AUTH ═══════════════════════════════════════════════════ -->
+<div id="auth-page">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="auth-icon">🌱</div>
+      <span class="auth-logo">FarmIQ</span>
+    </div>
+    <p class="auth-sub">Poultry Farm Management System</p>
+    <div class="auth-tabs">
+      <button id="tab-login" class="tab active">Sign In</button>
+      <button id="tab-register" class="tab">Register Farm</button>
+    </div>
+
+    <div id="login-form-wrap">
+      <form id="login-form">
+        <div class="form-group"><label>Email Address</label><input type="email" name="email" placeholder="you@farm.com" required/></div>
+        <div class="form-group"><label>Password</label><input type="password" name="password" placeholder="••••••••" required/></div>
+        <button type="submit" class="btn btn-primary btn-full">Sign In →</button>
+        <p class="auth-hint">🔑 Test: <strong>owner@testfarm.com</strong> / <strong>password123</strong></p>
+      </form>
+    </div>
+
+    <div id="register-form-wrap" class="hidden">
+      <form id="register-form">
+        <div class="form-group"><label>Farm / Organization Name</label><input type="text" name="org_name" placeholder="Sunrise Poultry Farm Ltd." required/></div>
+        <div class="form-row">
+          <div class="form-group"><label>Your Full Name</label><input type="text" name="full_name" placeholder="Evans Ahorgah" required/></div>
+          <div class="form-group"><label>Phone</label><input type="tel" name="phone" placeholder="+233..."/></div>
+        </div>
+        <div class="form-group"><label>Email Address</label><input type="email" name="email" placeholder="you@farm.com" required/></div>
+        <div class="form-group"><label>Password <small>(min 8 characters)</small></label><input type="password" name="password" minlength="8" placeholder="••••••••" required/></div>
+        <button type="submit" class="btn btn-primary btn-full">Create Farm Account →</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ══ APP ════════════════════════════════════════════════════ -->
+<div id="app-page" class="hidden">
+
+  <header id="header">
+    <div class="header-brand">
+      <div class="header-icon">🌱</div>
+      <span class="header-logo">FarmIQ</span>
+    </div>
+    <div class="header-right">
+      <div class="header-user">
+        <div class="header-avatar" id="user-initials">?</div>
+        <span id="user-name"></span>
+        <span id="user-role-badge"></span>
+      </div>
+      <button id="btn-logout" class="btn btn-outline btn-sm">Logout</button>
+    </div>
+  </header>
+
+  <div class="app-body">
+    <aside id="sidebar">
+      <div class="sidebar-section">Overview</div>
+      <nav>
+        <a class="nav-link" data-section="dashboard"><span class="nav-icon">📊</span><span class="nav-label">Dashboard</span></a>
+      </nav>
+      <div class="sidebar-section">Farm Operations</div>
+      <nav>
+        <a class="nav-link" data-section="flock"><span class="nav-icon">🐔</span><span class="nav-label">Flock</span></a>
+        <a class="nav-link" data-section="eggs"><span class="nav-icon">🥚</span><span class="nav-label">Egg Production</span></a>
+        <a class="nav-link" data-section="health"><span class="nav-icon">💊</span><span class="nav-label">Health</span></a>
+        <a class="nav-link" data-section="feed"><span class="nav-icon">🌾</span><span class="nav-label">Feed & Inventory</span></a>
+      </nav>
+      <div class="sidebar-section">Finance</div>
+      <nav>
+        <a class="nav-link" data-section="income"><span class="nav-icon">📥</span><span class="nav-label">Income</span></a>
+        <a class="nav-link" data-section="expenditure"><span class="nav-icon">📤</span><span class="nav-label">Expenditure</span></a>
+        <a class="nav-link" data-section="transactions"><span class="nav-icon">💰</span><span class="nav-label">All Transactions</span></a>
+        <a class="nav-link" data-section="ledger"><span class="nav-icon">📒</span><span class="nav-label">Stock Ledger</span></a>
+        <a class="nav-link" data-section="reports"><span class="nav-icon">📈</span><span class="nav-label">Reports</span></a>
+      </nav>
+      <div class="sidebar-section">Admin</div>
+      <nav>
+        <a class="nav-link" data-section="users"><span class="nav-icon">👥</span><span class="nav-label">Users & Access</span></a>
+        <a class="nav-link" data-section="alerts"><span class="nav-icon">🔔</span><span class="nav-label">Staff Alerts <span id="alert-badge" class="alert-badge hidden">0</span></span></a>
+        <a class="nav-link" data-section="audit"><span class="nav-icon">🔍</span><span class="nav-label">Audit Trail</span></a>
+      </nav>
+    </aside>
+
+    <main id="content">
+
+      <!-- ── DASHBOARD ──────────────────────────────────── -->
+      <div id="section-dashboard" class="section hidden">
+        <div class="section-header">
+          <h2 class="section-title"><span class="section-icon icon-dash">📊</span> Dashboard</h2>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card stat-birds"><span class="stat-emoji">🐓</span><div class="stat-label">Total Birds</div><div class="stat-value" id="stat-birds">—</div></div>
+          <div class="stat-card stat-batches"><span class="stat-emoji">📦</span><div class="stat-label">Active Batches</div><div class="stat-value" id="stat-batches">—</div></div>
+          <div class="stat-card stat-eggs-t"><span class="stat-emoji">🥚</span><div class="stat-label">Eggs (7 Days)</div><div class="stat-value" id="stat-eggs">—</div><div style="font-size:10px;color:var(--gray-400);margin-top:2px" id="stat-eggs-today"></div></div>
+          <div class="stat-card stat-income"><span class="stat-emoji">📈</span><div class="stat-label">Monthly Income</div><div class="stat-value" id="stat-income">—</div></div>
+          <div class="stat-card stat-exp"><span class="stat-emoji">📉</span><div class="stat-label">Monthly Expenses</div><div class="stat-value" id="stat-expenses">—</div></div>
+          <div class="stat-card stat-profit"><span class="stat-emoji">💰</span><div class="stat-label">Monthly Profit</div><div class="stat-value" id="stat-profit">—</div></div>
+          <div class="stat-card stat-pend"><span class="stat-emoji">⏳</span><div class="stat-label">Pending Approvals</div><div class="stat-value" id="stat-pending">—</div></div>
+        </div>
+        <p class="dash-hint">💡 Start by creating a <strong>Pen</strong> then a <strong>Batch</strong> under Flock. Then log daily eggs, health events, and transactions.</p>
+      </div>
+
+      <!-- ── FLOCK ──────────────────────────────────────── -->
+      <div id="section-flock" class="section hidden">
+        <div class="section-header">
+          <h2 class="section-title"><span class="section-icon icon-flock">🐔</span> Flock Management</h2>
+          <div class="header-actions">
+            <button class="btn btn-outline btn-sm" onclick="showModal('modal-pen')">+ New Pen</button>
+            <button class="btn btn-primary btn-sm" onclick="showModal('modal-batch')">+ New Batch</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Batches</span></div>
+          <table class="table">
+            <thead><tr><th>Batch No.</th><th>Product / Breed</th><th>Purpose</th><th>Status</th><th>Birds</th><th>Age (wks)</th><th>Pen</th><th>Eggs 7d</th><th>Actions</th></tr></thead>
+            <tbody id="batches-tbody"></tbody>
+          </table>
+        </div>
+        <div class="card mt">
+          <div class="card-header"><span class="card-title">Pens / Housing</span></div>
+          <table class="table">
+            <thead><tr><th>Name</th><th>Capacity</th><th>Type</th><th>Active Batches</th><th>Total Birds</th></tr></thead>
+            <tbody id="pens-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── EGGS ───────────────────────────────────────── -->
+      <div id="section-eggs" class="section hidden">
+        <div class="section-header">
+          <h2 class="section-title"><span class="section-icon icon-eggs">🥚</span> Egg Production</h2>
+        </div>
+
+        <!-- Summary Stat Cards -->
+        <div class="egg-stats-row">
+          <div class="egg-stat-card egg-stat-collected">
+            <div class="egg-stat-icon">🥚</div>
+            <div class="egg-stat-body">
+              <div class="egg-stat-label">Today's Collection</div>
+              <div class="egg-stat-value" id="egg-stat-today">—</div>
+            </div>
+          </div>
+          <div class="egg-stat-card egg-stat-saleable-card">
+            <div class="egg-stat-icon">✅</div>
+            <div class="egg-stat-body">
+              <div class="egg-stat-label">Saleable Today</div>
+              <div class="egg-stat-value" id="egg-stat-saleable">—</div>
+            </div>
+          </div>
+          <div class="egg-stat-card egg-stat-rate-card">
+            <div class="egg-stat-icon">📈</div>
+            <div class="egg-stat-body">
+              <div class="egg-stat-label">Avg Laying Rate</div>
+              <div class="egg-stat-value" id="egg-stat-rate">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Two-panel layout: Form + Live Batch Preview -->
+        <div class="egg-main-layout">
+
+          <!-- LEFT: Log Form -->
+          <div class="card egg-form-card">
+            <div class="card-header" style="padding-bottom:16px;border-bottom:1px solid var(--gray-100)">
+              <div>
+                <span class="card-title">Log Daily Collection</span>
+                <p style="font-size:12px;color:var(--gray-400);margin-top:3px;font-weight:400">Record eggs collected per batch per day</p>
+              </div>
+            </div>
+            <div style="padding:20px">
+              <form id="form-eggs">
+
+                <!-- Step 1: Batch & Date -->
+                <div class="egg-step">
+                  <div class="egg-step-header">
+                    <span class="egg-step-num">1</span>
+                    <span class="egg-step-title">Select Batch &amp; Date</span>
+                  </div>
+                  <div class="form-row" style="gap:14px">
+                    <div class="form-group">
+                      <label>Batch Number <span style="color:#dc2626">*</span></label>
+                      <select id="egg-batch" name="batch_id" required onchange="onEggBatchChange()">
+                        <option value="">— Choose batch —</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label>Collection Date <span style="color:#dc2626">*</span></label>
+                      <input type="date" name="record_date" required/>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Step 2: Production Data -->
+                <div class="egg-step">
+                  <div class="egg-step-header">
+                    <span class="egg-step-num">2</span>
+                    <span class="egg-step-title">Enter Production Data</span>
+                  </div>
+                  <div class="form-row" style="gap:14px">
+                    <div class="form-group">
+                      <label>Eggs Collected <span style="color:#dc2626">*</span></label>
+                      <input type="number" name="eggs_collected" id="egg-collected" min="0" placeholder="e.g. 850" required oninput="calcLayingRate()"/>
+                    </div>
+                    <div class="form-group">
+                      <label>Broken / Rejected</label>
+                      <input type="number" name="broken_eggs" id="egg-broken" min="0" value="0" placeholder="0" oninput="calcLayingRate()"/>
+                    </div>
+                  </div>
+
+                  <!-- Laying Rate Bar (shown when eggs entered) -->
+                  <div class="egg-rate-box" id="egg-rate-box" style="display:none">
+                    <div class="egg-rate-row">
+                      <span class="egg-rate-label">Estimated Laying Rate</span>
+                      <span class="egg-rate-pct" id="egg-laying-preview">—</span>
+                    </div>
+                    <div class="egg-rate-track">
+                      <div class="egg-rate-fill" id="egg-rate-fill"></div>
+                    </div>
+                    <div class="egg-rate-legend">
+                      <span>0%</span><span style="color:#15803d">Good ≥ 70%</span><span>100%</span>
+                    </div>
+                    <div class="egg-saleable-row">
+                      <span>Saleable eggs:</span>
+                      <strong id="egg-saleable-preview">—</strong>
+                    </div>
+                  </div>
+
+                  <div class="form-group" style="margin-top:4px">
+                    <label>Notes <small style="color:var(--gray-400);font-weight:400">(optional)</small></label>
+                    <input type="text" name="notes" placeholder="e.g. Birds stressed, peak lay season, weather impact…"/>
+                  </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary egg-submit-btn">
+                  🥚 &nbsp;Save Egg Record
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- RIGHT: Live Batch Info Panel -->
+          <div class="egg-info-panel">
+            <!-- Placeholder when no batch selected -->
+            <div class="egg-info-placeholder" id="egg-info-placeholder">
+              <div class="egg-placeholder-icon">🐓</div>
+              <p class="egg-placeholder-title">No batch selected</p>
+              <p class="egg-placeholder-sub">Select a batch number on the left to see bird details here.</p>
+            </div>
+
+            <!-- Filled when batch selected -->
+            <div class="egg-info-detail" id="egg-info-detail" style="display:none">
+              <div class="egg-info-header">
+                <span class="egg-info-batch-badge" id="egg-info-batch-code">—</span>
+                <span class="badge b-green" id="egg-info-purpose-badge">—</span>
+              </div>
+              <div class="egg-info-breed" id="egg-info-breed">—</div>
+
+              <div class="egg-info-divider"></div>
+
+              <div class="egg-info-row">
+                <span class="egg-info-lbl">Birds in Batch</span>
+                <span class="egg-info-val" id="egg-bird-count">—</span>
+              </div>
+              <div class="egg-info-row">
+                <span class="egg-info-lbl">Target (70% rate)</span>
+                <span class="egg-info-val" id="egg-info-target">—</span>
+              </div>
+              <div class="egg-info-row">
+                <span class="egg-info-lbl">Product / Breed</span>
+                <span class="egg-info-val" id="egg-product-name">—</span>
+              </div>
+              <div class="egg-info-row">
+                <span class="egg-info-lbl">Purpose</span>
+                <span class="egg-info-val" id="egg-purpose">—</span>
+              </div>
+
+              <div class="egg-info-divider"></div>
+
+              <div class="egg-info-tip">
+                <span>💡</span>
+                <span id="egg-info-tip-text">Enter eggs collected to see the laying rate.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Records Table -->
+        <div class="card" style="margin-top:20px">
+          <div class="card-header">
+            <span class="card-title">Production Records</span>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <select id="egg-filter-batch" onchange="filterEggs()" class="egg-filter-input">
+                <option value="">All Batches</option>
+              </select>
+              <input type="date" id="egg-filter-from" onchange="filterEggs()" class="egg-filter-input" placeholder="From"/>
+              <input type="date" id="egg-filter-to"   onchange="filterEggs()" class="egg-filter-input" placeholder="To"/>
+              <button class="btn btn-ghost btn-xs" onclick="clearEggFilters()">✕ Clear</button>
+            </div>
+          </div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Batch No.</th>
+                <th>Product / Breed</th>
+                <th>Purpose</th>
+                <th>Birds</th>
+                <th>Collected</th>
+                <th>Broken</th>
+                <th>Saleable</th>
+                <th>Lay Rate</th>
+              </tr>
+            </thead>
+            <tbody id="eggs-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── HEALTH ─────────────────────────────────────── -->
+      <div id="section-health" class="section hidden">
+        <div class="section-header">
+          <h2 class="section-title"><span class="section-icon icon-health">💊</span> Health Records</h2>
+        </div>
+        <div class="two-col">
+          <div class="card card-full">
+            <div class="card-title" style="margin-bottom:16px">Log Health Event</div>
+            <form id="form-health">
+              <div class="form-group"><label>Batch</label><select id="health-batch" name="batch_id" required><option value="">Select batch</option></select></div>
+              <div class="form-row">
+                <div class="form-group"><label>Event Type</label>
+                  <select name="event_type" required>
+                    <option value="vaccination">Vaccination</option><option value="treatment">Treatment</option>
+                    <option value="mortality">Mortality</option><option value="deworming">Deworming</option>
+                    <option value="biosecurity">Biosecurity</option><option value="inspection">Inspection</option><option value="other">Other</option>
+                  </select>
+                </div>
+                <div class="form-group"><label>Severity</label>
+                  <select name="severity">
+                    <option value="low">Low</option><option value="medium">Medium</option>
+                    <option value="high">High</option><option value="critical">Critical</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group"><label>Date</label><input type="date" name="event_date" required/></div>
+              <div class="form-group"><label>Diagnosis / Description</label><input type="text" name="diagnosis" placeholder="e.g. Newcastle disease vaccine"/></div>
+              <div class="form-row">
+                <div class="form-group"><label>Birds Affected</label><input type="number" name="birds_affected" min="0" value="0"/></div>
+                <div class="form-group"><label>Birds Treated</label><input type="number" name="birds_treated" min="0" value="0"/></div>
+              </div>
+              <div class="form-group"><label>Cost (GHS)</label><input type="number" name="cost" min="0" step="0.01" value="0"/></div>
+              <div class="form-group"><label>Notes</label><input type="text" name="notes" placeholder="Optional"/></div>
+              <button type="submit" class="btn btn-primary btn-full">Log Event</button>
+            </form>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Recent Events</span></div>
+            <table class="table">
+              <thead><tr><th>Date</th><th>Batch</th><th>Type</th><th>Severity</th><th>Affected</th><th>Status</th></tr></thead>
+              <tbody id="health-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── FEED ───────────────────────────────────────── -->
+      <div id="section-feed" class="section hidden">
+        <div class="section-header">
+          <h2 class="section-title"><span class="section-icon icon-feed">🌾</span> Feed & Inventory</h2>
+        </div>
+        <div class="two-col">
+          <div class="card card-full">
+            <div class="card-title" style="margin-bottom:16px">Log Feed Transaction</div>
+            <form id="form-feed">
+              <div class="form-group"><label>Type</label>
+                <select name="transaction_type" required>
+                  <option value="purchase">Purchase (add to stock)</option>
+                  <option value="usage">Usage (consumed by birds)</option>
+                </select>
+              </div>
+              <div class="form-group"><label>Feed Type</label>
+                <select name="feed_type" required>
+                  <option value="chick_starter">Chick Starter</option><option value="broiler_starter">Broiler Starter</option>
+                  <option value="broiler_finisher">Broiler Finisher</option><option value="layers_mash">Layers Mash</option>
+                  <option value="layers_concentrate">Layers Concentrate</option><option value="grower_mash">Grower Mash</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </div>
+              <!-- Bags input (auto-calculates kg) -->
+              <div class="card" style="background:var(--gray-50);border:1px solid var(--gray-200);padding:12px;border-radius:8px;margin-bottom:12px">
+                <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--gray-400);margin-bottom:8px">Enter by Bags (auto-calculates kg)</div>
+                <div class="form-row" style="margin-bottom:0">
+                  <div class="form-group" style="margin-bottom:0"><label>No. of Bags</label><input type="number" id="feed-bags" min="0" step="1" placeholder="e.g. 5" oninput="calcFeedKg()"/></div>
+                  <div class="form-group" style="margin-bottom:0"><label>kg per Bag</label><input type="number" id="feed-kg-per-bag" name="kg_per_bag" min="0" step="0.5" placeholder="e.g. 50" oninput="calcFeedKg()"/></div>
+                  <div class="form-group" style="margin-bottom:0"><label>= Total kg</label><input type="number" id="feed-kg-display" readonly style="background:#f0fdf4;font-weight:700;color:#15803d" placeholder="auto"/></div>
+                </div>
+              </div>
+              <input type="hidden" name="bags_count" id="feed-bags-hidden"/>
+              <div class="form-row">
+                <div class="form-group"><label>Quantity (kg) <small style="color:var(--gray-400)">or enter manually</small></label><input type="number" name="quantity_kg" id="feed-qty-kg" min="0.1" step="0.1" required/></div>
+                <div class="form-group"><label>Unit Cost / kg (GHS)</label><input type="number" name="unit_cost" min="0" step="0.01" placeholder="Optional"/></div>
+              </div>
+              <div class="form-group"><label>Supplier</label><input type="text" name="supplier" placeholder="Optional"/></div>
+              <div class="form-group"><label>Date</label><input type="date" name="transaction_date" required/></div>
+              <button type="submit" class="btn btn-primary btn-full">Log Transaction</button>
+            </form>
+          </div>
+          <div>
+            <div class="card">
+              <div class="card-header"><span class="card-title">Current Inventory</span></div>
+              <table class="table">
+                <thead><tr><th>Feed Type</th><th>Stock</th><th>Min Level</th><th>Unit Cost</th><th>Status</th></tr></thead>
+                <tbody id="inventory-tbody"></tbody>
+              </table>
+            </div>
+            <div class="card mt">
+              <div class="card-header"><span class="card-title">Recent Transactions</span></div>
+              <table class="table">
+                <thead><tr><th>Date</th><th>Type</th><th>Feed</th><th>Qty</th><th>Total</th></tr></thead>
+                <tbody id="feed-tx-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── INCOME ─────────────────────────────────────── -->
+      <div id="section-income" class="section hidden">
+        <div class="section-header">
+          <h2 class="section-title"><span class="section-icon icon-feed">📥</span> Record Income</h2>
+        </div>
+        <div class="two-col">
+          <div class="card card-full">
+            <div class="card-title" style="margin-bottom:16px">New Income Entry</div>
+            <form id="form-income">
+              <div class="form-group"><label>Income Category</label>
+                <select name="category" id="income-category" required onchange="onIncomeCategoryChange()">
+                  <option value="egg_sales">🥚 Egg Sales</option>
+                  <option value="broiler_sales">🐔 Broiler Sales</option>
+                  <option value="day_old_chick_sales">🐣 Day-old Chick Sales</option>
+                  <option value="layer_sales">🐓 Layer Sales</option>
+                  <option value="manure_sales">🌿 Manure Sales</option>
+                  <option value="other_income">💼 Other Income</option>
+                </select>
+              </div>
+
+              <!-- Product Sale Details (shown for product categories) -->
+              <div id="sale-details-block" class="card" style="background:var(--gray-50);border:1px solid var(--gray-200);padding:14px;border-radius:8px;margin-bottom:12px">
+                <div class="form-section-label" style="margin-bottom:10px">📦 Product Sale Details</div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Batch <small id="income-batch-hint" style="color:var(--gray-400)"></small></label>
+                    <select name="sale_batch_id" id="income-batch-select">
+                      <option value="">Select batch (optional for eggs)</option>
+                    </select>
+                    <span id="income-stock-hint" style="font-size:11px;color:var(--brand);margin-top:3px;display:block"></span>
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Quantity Sold</label>
+                    <input type="number" name="sale_quantity" id="income-qty" min="0.01" step="0.01" placeholder="e.g. 30" oninput="calcIncomeAmount()"/>
+                  </div>
+                  <div class="form-group">
+                    <label>Unit</label>
+                    <select name="sale_unit" id="income-unit">
+                      <option value="tray">Tray</option>
+                      <option value="crate">Crate</option>
+                      <option value="bird">Bird</option>
+                      <option value="chick">Chick</option>
+                      <option value="kg">Kg</option>
+                      <option value="bag">Bag</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Unit Price (GHS)</label>
+                    <input type="number" name="sale_unit_price" id="income-unit-price" min="0.01" step="0.01" placeholder="e.g. 20.00" oninput="calcIncomeAmount()"/>
+                  </div>
+                </div>
+                <div id="income-amount-preview" style="background:#f0fdf4;border-radius:6px;padding:8px 12px;font-size:13px;color:#15803d;font-weight:700;display:none;margin-top:4px"></div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group"><label>Total Amount (GHS)</label><input type="number" name="amount" id="income-amount" min="0.01" step="0.01" placeholder="0.00" required/></div>
+                <div class="form-group"><label>Date</label><input type="date" name="transaction_date" required/></div>
+              </div>
+              <div class="form-group"><label>Description</label><input type="text" name="description" id="income-desc" placeholder="e.g. Sold 30 trays of eggs to Ama Mensah" required oninput="this.dataset.userEdited='1'"/></div>
+              <div class="form-row">
+                <div class="form-group"><label>Payment Method</label>
+                  <select name="payment_method">
+                    <option value="cash">💵 Cash</option>
+                    <option value="mobile_money">📱 Mobile Money</option>
+                    <option value="bank_transfer">🏦 Bank Transfer</option>
+                    <option value="cheque">📄 Cheque</option>
+                    <option value="credit">💳 Credit</option>
+                  </select>
+                </div>
+                <div class="form-group"><label>Buyer Name</label><input type="text" name="counterparty_name" placeholder="e.g. Ama Mensah"/></div>
+              </div>
+              <div class="form-row">
+                <div class="form-group"><label>Buyer Phone</label><input type="tel" name="counterparty_phone" placeholder="+233..."/></div>
+                <div class="form-group"><label>Invoice / Receipt No.</label><input type="text" name="invoice_number" placeholder="Optional"/></div>
+              </div>
+              <input type="hidden" name="type" value="income"/>
+              <button type="submit" class="btn btn-primary btn-full" style="background:linear-gradient(135deg,#16a34a,#15803d)">💰 Record Income</button>
+            </form>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Recent Income</span></div>
+            <table class="table">
+              <thead><tr><th>Date</th><th>Category</th><th>Qty / Unit</th><th>Unit Price</th><th>Amount</th><th>Buyer</th><th>Status</th></tr></thead>
+              <tbody id="income-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── EXPENDITURE ────────────────────────────────── -->
+      <div id="section-expenditure" class="section hidden">
+        <div class="section-header">
+          <h2 class="section-title"><span class="section-icon icon-health">📤</span> Record Expenditure</h2>
+        </div>
+        <div class="two-col">
+          <div class="card card-full">
+            <div class="card-title" style="margin-bottom:16px">New Expense Entry</div>
+            <form id="form-expenditure">
+              <div class="form-group"><label>Expense Category</label>
+                <select name="category" required>
+                  <option value="feed_purchase">🌾 Feed Purchase</option>
+                  <option value="chick_purchase">🐣 Chick Purchase</option>
+                  <option value="medication">💊 Medication</option>
+                  <option value="vaccination_cost">💉 Vaccination Cost</option>
+                  <option value="labour">👷 Labour / Wages</option>
+                  <option value="utilities">💡 Utilities (Water/Electricity)</option>
+                  <option value="equipment">🔧 Equipment</option>
+                  <option value="transport">🚚 Transport</option>
+                  <option value="maintenance">🏗️ Maintenance</option>
+                  <option value="loan_repayment">🏦 Loan Repayment</option>
+                  <option value="other_expense">📋 Other Expense</option>
+                </select>
+              </div>
+              <div class="form-row">
+                <div class="form-group"><label>Amount (GHS)</label><input type="number" name="amount" min="0.01" step="0.01" placeholder="0.00" required/></div>
+                <div class="form-group"><label>Date</label><input type="date" name="transaction_date" required/></div>
+              </div>
+              <div class="form-group"><label>Description</label><input type="text" name="description" placeholder="e.g. Purchased 500kg layers mash from AgriCo" required/></div>
+              <div class="form-row">
+                <div class="form-group"><label>Payment Method</label>
+                  <select name="payment_method">
+                    <option value="cash">💵 Cash</option>
+                    <option value="mobile_money">📱 Mobile Money</option>
+                    <option value="bank_transfer">🏦 Bank Transfer</option>
+                    <option value="cheque">📄 Cheque</option>
+                    <option value="credit">💳 Credit</option>
+                  </select>
+                </div>
+                <div class="form-group"><label>Supplier Name</label><input type="text" name="counterparty_name" placeholder="e.g. AgriCo Ltd"/></div>
+              </div>
+              <div class="form-row">
+                <div class="form-group"><label>Supplier Phone</label><input type="tel" name="counterparty_phone" placeholder="+233..."/></div>
+                <div class="form-group"><label>Invoice / Receipt No.</label><input type="text" name="invoice_number" placeholder="Optional"/></div>
+              </div>
+              <input type="hidden" name="type" value="expense"/>
+              <button type="submit" class="btn btn-danger btn-full">📤 Record Expenditure</button>
+            </form>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Recent Expenditure</span></div>
+            <table class="table">
+              <thead><tr><th>Date</th><th>Category</th><th>Amount</th><th>Description</th><th>Supplier</th><th>Status</th></tr></thead>
+              <tbody id="expenditure-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── ALL TRANSACTIONS ───────────────────────────── -->
+      <div id="section-transactions" class="section hidden">
+        <div class="section-header">
+          <h2 class="section-title"><span class="section-icon icon-tx">💰</span> All Transactions</h2>
+          <div class="header-actions">
+            <button class="btn btn-primary btn-sm" onclick="navigateTo('income')">+ Income</button>
+            <button class="btn btn-danger btn-sm" onclick="navigateTo('expenditure')">+ Expense</button>
+          </div>
+        </div>
+
+        <!-- Filter & Export Bar -->
+        <div class="card" style="margin-bottom:14px">
+          <div class="card-body" style="padding:14px">
+            <div class="filter-bar" style="flex-wrap:wrap;gap:10px;align-items:flex-end">
+              <div>
+                <div style="font-size:11px;font-weight:600;color:var(--gray-400);margin-bottom:4px">TYPE</div>
+                <select id="filter-tx-type" onchange="filterTransactions()" style="padding:7px 10px;border-radius:7px;border:1.5px solid var(--gray-200);font-size:13px">
+                  <option value="">All Types</option><option value="income">Income</option><option value="expense">Expense</option>
+                </select>
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:600;color:var(--gray-400);margin-bottom:4px">STATUS</div>
+                <select id="filter-tx-status" onchange="filterTransactions()" style="padding:7px 10px;border-radius:7px;border:1.5px solid var(--gray-200);font-size:13px">
+                  <option value="">All Statuses</option><option value="approved">Approved</option><option value="pending">Pending</option><option value="rejected">Rejected</option>
+                </select>
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:600;color:var(--gray-400);margin-bottom:4px">FROM DATE</div>
+                <input type="date" id="filter-tx-from" onchange="filterTransactions()" style="padding:7px 10px;border-radius:7px;border:1.5px solid var(--gray-200);font-size:13px"/>
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:600;color:var(--gray-400);margin-bottom:4px">TO DATE</div>
+                <input type="date" id="filter-tx-to" onchange="filterTransactions()" style="padding:7px 10px;border-radius:7px;border:1.5px solid var(--gray-200);font-size:13px"/>
+              </div>
+              <button class="btn btn-ghost btn-sm" onclick="clearTxFilters()" style="margin-top:18px">Clear</button>
+              <div style="flex:1"></div>
+              <button class="btn btn-excel btn-sm" onclick="exportTxExcel()" style="margin-top:18px">⬇ Excel</button>
+              <button class="btn btn-pdf btn-sm" onclick="exportTxPDF()" style="margin-top:18px">⬇ PDF</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Financial Records</span>
+            <span id="tx-count" style="font-size:12px;color:var(--gray-400)"></span>
+          </div>
+          <table class="table">
+            <thead><tr><th>Date</th><th>Ref</th><th>Type</th><th>Category</th><th>Qty / Unit</th><th>Amount</th><th>Description</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="tx-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── STOCK LEDGER ───────────────────────────────── -->
+      <div id="section-ledger" class="section hidden">
+        <div class="section-header">
+          <h2 class="section-title"><span class="section-icon icon-feed">📒</span> Stock Ledger</h2>
+          <div class="header-actions">
+            <select id="ledger-filter" onchange="filterLedger()" style="padding:6px 12px;border-radius:7px;border:1.5px solid var(--gray-200);font-size:13px">
+              <option value="">All Feed Types</option>
+              <option value="chick_starter">Chick Starter</option>
+              <option value="broiler_starter">Broiler Starter</option>
+              <option value="broiler_finisher">Broiler Finisher</option>
+              <option value="layers_mash">Layers Mash</option>
+              <option value="layers_concentrate">Layers Concentrate</option>
+              <option value="grower_mash">Grower Mash</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Stock Summary Cards -->
+        <div id="stock-summary" class="stats-grid" style="margin-bottom:20px"></div>
+
+        <!-- Ledger Table -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Movement Ledger</span>
+            <span id="ledger-feed-label" style="font-size:12px;color:var(--gray-400)">All feed types</span>
+          </div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Feed Type</th>
+                <th>Movement</th>
+                <th>Bags</th>
+                <th style="color:var(--brand)">Qty In (kg)</th>
+                <th style="color:var(--c-health)">Qty Out (kg)</th>
+                <th>Unit Cost</th>
+                <th>Total Value</th>
+                <th style="font-weight:800">Balance (kg)</th>
+                <th>Supplier / Note</th>
+              </tr>
+            </thead>
+            <tbody id="ledger-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── REPORTS ────────────────────────────────────── -->
+      <div id="section-reports" class="section hidden">
+        <div class="section-header">
+          <h2 class="section-title"><span class="section-icon icon-reports">📈</span> Reports — <span id="report-year"></span></h2>
+          <div class="header-actions">
+            <button class="btn btn-excel btn-sm" onclick="exportExcel()">⬇ Excel</button>
+            <button class="btn btn-pdf btn-sm" onclick="exportPDF()">⬇ PDF</button>
+          </div>
+        </div>
+        <div class="stats-grid four">
+          <div class="stat-card stat-income"><span class="stat-emoji">📈</span><div class="stat-label">Total Income</div><div class="stat-value" id="pl-income">—</div></div>
+          <div class="stat-card stat-exp"><span class="stat-emoji">📉</span><div class="stat-label">Total Expenses</div><div class="stat-value" id="pl-expenses">—</div></div>
+          <div class="stat-card stat-profit"><span class="stat-emoji">💰</span><div class="stat-label">Net Profit</div><div class="stat-value" id="pl-profit">—</div></div>
+          <div class="stat-card stat-birds"><span class="stat-emoji">📊</span><div class="stat-label">Profit Margin</div><div class="stat-value" id="pl-margin">—</div></div>
+        </div>
+        <div class="two-col mt" style="grid-template-columns:1fr 1fr">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Income Breakdown</span></div>
+            <table class="table"><thead><tr><th>Category</th><th>Amount (GHS)</th></tr></thead><tbody id="pl-income-tbody"></tbody></table>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Expense Breakdown</span></div>
+            <table class="table"><thead><tr><th>Category</th><th>Amount (GHS)</th></tr></thead><tbody id="pl-expense-tbody"></tbody></table>
+          </div>
+        </div>
+        <div class="card mt">
+          <div class="card-header"><span class="card-title">Weekly Egg Production</span></div>
+          <table class="table">
+            <thead><tr><th>Week</th><th>Total Eggs</th><th>Saleable</th><th>Avg Lay Rate</th></tr></thead>
+            <tbody id="prod-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── USERS & ACCESS CONTROL ─────────────────────── -->
+      <div id="section-users" class="section hidden">
+        <div class="section-header">
+          <h2 class="section-title"><span class="section-icon icon-users">👥</span> Users & Access Control</h2>
+          <button class="btn btn-primary btn-sm" onclick="showModal('modal-user')">+ New User</button>
+        </div>
+
+        <!-- Role reference -->
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-header"><span class="card-title">Role Hierarchy</span></div>
+          <div class="card-body" style="display:flex;gap:10px;flex-wrap:wrap;padding-top:0">
+            <span class="badge role-super_admin">super_admin — full system</span>
+            <span class="badge role-farm_owner">farm_owner — full farm + finance</span>
+            <span class="badge role-farm_manager">farm_manager — ops + view finance</span>
+            <span class="badge role-finance_officer">finance_officer — finance + view ops</span>
+            <span class="badge role-veterinarian">veterinarian — health only</span>
+            <span class="badge role-data_entry">data_entry — add records only</span>
+            <span class="badge role-viewer">viewer — read-only</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><span class="card-title">Team Members</span></div>
+          <table class="table">
+            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last Login</th><th>Actions</th></tr></thead>
+            <tbody id="users-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── STAFF ALERTS ──────────────────────────────── -->
+      <div id="section-alerts" class="section hidden">
+        <div class="section-header">
+          <h2 class="section-title"><span class="section-icon icon-alerts">🔔</span> Staff Alerts</h2>
+          <button class="btn btn-primary btn-sm" id="btn-new-alert" onclick="showModal('modal-alert')">+ New Alert</button>
+        </div>
+
+        <!-- Create alert form (managers only — shown/hidden by JS) -->
+        <div id="alert-form-card" class="card" style="margin-bottom:20px;display:none">
+          <div class="card-header"><span class="card-title">Broadcast Alert to Staff</span></div>
+          <div class="card-body">
+            <form id="form-alert">
+              <div class="form-row">
+                <div class="form-group" style="flex:2"><label>Alert Title</label>
+                  <input type="text" name="title" placeholder="e.g. Low feed stock — reorder immediately" required maxlength="200"/>
+                </div>
+                <div class="form-group"><label>Severity</label>
+                  <select name="severity">
+                    <option value="info">ℹ Info</option>
+                    <option value="warning">⚠ Warning</option>
+                    <option value="critical">🚨 Critical</option>
+                  </select>
+                </div>
+                <div class="form-group"><label>Category</label>
+                  <select name="category">
+                    <option value="general">General</option>
+                    <option value="health">Health</option>
+                    <option value="feed">Feed</option>
+                    <option value="flock">Flock</option>
+                    <option value="finance">Finance</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group"><label>Message</label>
+                <textarea name="message" rows="3" placeholder="Detailed message for staff…" required style="resize:vertical"></textarea>
+              </div>
+              <div class="form-row">
+                <div class="form-group"><label>Target Roles <small style="color:var(--gray-400)">(leave blank = all staff)</small></label>
+                  <select name="target_roles" multiple style="height:90px">
+                    <option value="farm_manager">Farm Manager</option>
+                    <option value="finance_officer">Finance Officer</option>
+                    <option value="veterinarian">Veterinarian</option>
+                    <option value="data_entry">Data Entry</option>
+                    <option value="viewer">Viewer</option>
+                  </select>
+                </div>
+                <div class="form-group"><label>Expires At <small style="color:var(--gray-400)">(optional)</small></label>
+                  <input type="date" name="expires_at"/>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary">📢 Broadcast Alert</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Active alerts grid -->
+        <div id="alerts-grid" class="alerts-grid">
+          <div class="empty" style="padding:60px 0;text-align:center">
+            <span class="empty-icon">🔔</span>No active alerts
+          </div>
+        </div>
+
+        <!-- All alerts history (managers) -->
+        <div id="alerts-history-card" class="card" style="margin-top:20px;display:none">
+          <div class="card-header">
+            <span class="card-title">Alert History</span>
+            <button class="btn btn-outline btn-xs" onclick="loadAllAlerts()">Refresh</button>
+          </div>
+          <table class="table">
+            <thead><tr><th>Date</th><th>Severity</th><th>Title</th><th>Category</th><th>Target</th><th>Reads</th><th>Status</th><th></th></tr></thead>
+            <tbody id="alerts-history-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── AUDIT TRAIL ───────────────────────────────── -->
+      <div id="section-audit" class="section hidden">
+        <div class="section-header">
+          <h2 class="section-title"><span class="section-icon icon-audit">🔍</span> Audit Trail</h2>
+          <button class="btn btn-outline btn-sm" onclick="navigateTo('users')" style="font-size:12px">← Back to Users</button>
+        </div>
+
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-body" style="padding:16px">
+            <div class="filter-bar" style="flex-wrap:wrap;gap:10px">
+              <select id="audit-filter-user" onchange="filterAudit()" style="padding:7px 12px;border-radius:7px;border:1.5px solid var(--gray-200);font-size:13px;min-width:160px">
+                <option value="">All Users</option>
+              </select>
+              <select id="audit-filter-action" onchange="filterAudit()" style="padding:7px 12px;border-radius:7px;border:1.5px solid var(--gray-200);font-size:13px;min-width:160px">
+                <option value="">All Actions</option>
+              </select>
+              <select id="audit-filter-resource" onchange="filterAudit()" style="padding:7px 12px;border-radius:7px;border:1.5px solid var(--gray-200);font-size:13px;min-width:160px">
+                <option value="">All Resources</option>
+                <option value="transaction">Transaction</option>
+                <option value="batch">Batch</option>
+                <option value="pen">Pen</option>
+                <option value="user">User</option>
+                <option value="health_event">Health Event</option>
+                <option value="feed_transaction">Feed Transaction</option>
+                <option value="egg_record">Egg Record</option>
+                <option value="alert">Alert</option>
+              </select>
+              <input type="date" id="audit-date-from" onchange="filterAudit()" placeholder="From date" style="padding:7px 12px;border-radius:7px;border:1.5px solid var(--gray-200);font-size:13px"/>
+              <input type="date" id="audit-date-to" onchange="filterAudit()" placeholder="To date" style="padding:7px 12px;border-radius:7px;border:1.5px solid var(--gray-200);font-size:13px"/>
+              <button class="btn btn-outline btn-sm" onclick="filterAudit()">Apply</button>
+              <button class="btn btn-ghost btn-sm" onclick="clearAuditFilters()">Clear</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Activity Log</span>
+            <span id="audit-count" style="font-size:12px;color:var(--gray-400)"></span>
+          </div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>User</th>
+                <th>Role</th>
+                <th>Action</th>
+                <th>Resource</th>
+                <th>IP Address</th>
+              </tr>
+            </thead>
+            <tbody id="audit-tbody"></tbody>
+          </table>
+          <div id="audit-pagination" class="audit-pagination"></div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ══ MODALS ═════════════════════════════════════════════════ -->
+
+<!-- New Batch -->
+<div id="modal-batch" class="modal hidden">
+  <div class="modal-box" style="max-width:560px">
+    <div class="modal-head"><h3>🐔 New Batch</h3><button class="modal-close" onclick="hideModal('modal-batch')">✕</button></div>
+    <div class="modal-body">
+      <form id="form-batch">
+        <!-- Section A: Batch Identity -->
+        <div class="form-section-label">🏷 Batch Identity</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Batch Number <small style="color:var(--gray-400)">(unique ID)</small></label>
+            <input type="text" name="batch_code" id="batch-code-input" placeholder="e.g. BAT-001" required/>
+            <span id="batch-code-hint" style="font-size:11px;color:var(--brand);margin-top:3px;display:block"></span>
+          </div>
+          <div class="form-group"><label>Date of Chick (DOC)</label><input type="date" name="doc_date" required/></div>
+        </div>
+
+        <!-- Section B: Product Details -->
+        <div class="form-section-label" style="margin-top:4px">🐓 Product / Bird Details</div>
+        <div class="form-row">
+          <div class="form-group"><label>Breed / Product Name</label><input type="text" name="breed" placeholder="e.g. Isa Brown, Ross 308" required/></div>
+          <div class="form-group"><label>Purpose</label>
+            <select name="purpose" required>
+              <option value="layers">Layers</option>
+              <option value="broilers">Broilers</option>
+              <option value="breeders">Breeders</option>
+              <option value="dual_purpose">Dual Purpose</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Bird Count</label><input type="number" name="initial_count" min="1" required/></div>
+          <div class="form-group"><label>Pen</label><select id="batch-pen" name="pen_id"><option value="">No pen</option></select></div>
+        </div>
+
+        <!-- Section C: Purchase Info -->
+        <div class="form-section-label" style="margin-top:4px">🧾 Purchase Info (Optional)</div>
+        <div class="form-row">
+          <div class="form-group"><label>Supplier</label><input type="text" name="supplier" placeholder="e.g. Tetteh Farms"/></div>
+          <div class="form-group"><label>Purchase Cost (GHS)</label><input type="number" name="purchase_cost" step="0.01" placeholder="0.00"/></div>
+        </div>
+
+        <div class="modal-foot">
+          <button type="button" class="btn btn-outline" onclick="hideModal('modal-batch')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Batch</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- New Pen -->
+<div id="modal-pen" class="modal hidden">
+  <div class="modal-box">
+    <div class="modal-head"><h3>🏠 New Pen</h3><button class="modal-close" onclick="hideModal('modal-pen')">✕</button></div>
+    <div class="modal-body">
+      <form id="form-pen">
+        <div class="form-row">
+          <div class="form-group"><label>Pen Name</label><input type="text" name="name" placeholder="Pen A" required/></div>
+          <div class="form-group"><label>Capacity (birds)</label><input type="number" name="capacity" min="1" required/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Type</label>
+            <select name="pen_type"><option value="">Select type</option><option value="brooder">Brooder</option><option value="grower">Grower</option><option value="layer_house">Layer House</option><option value="broiler_house">Broiler House</option></select>
+          </div>
+          <div class="form-group"><label>Location</label><input type="text" name="location" placeholder="Block B"/></div>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn btn-outline" onclick="hideModal('modal-pen')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Pen</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- New Transaction -->
+<div id="modal-tx" class="modal hidden">
+  <div class="modal-box">
+    <div class="modal-head"><h3>💰 New Transaction</h3><button class="modal-close" onclick="hideModal('modal-tx')">✕</button></div>
+    <div class="modal-body">
+      <form id="form-tx">
+        <div class="form-row">
+          <div class="form-group"><label>Type</label>
+            <select name="type" required><option value="income">Income</option><option value="expense">Expense</option></select>
+          </div>
+          <div class="form-group"><label>Category</label>
+            <select name="category" required>
+              <optgroup label="— Income —">
+                <option value="egg_sales">Egg Sales</option><option value="broiler_sales">Broiler Sales</option>
+                <option value="day_old_chick_sales">Day-old Chick Sales</option><option value="manure_sales">Manure Sales</option>
+                <option value="other_income">Other Income</option>
+              </optgroup>
+              <optgroup label="— Expense —">
+                <option value="feed_purchase">Feed Purchase</option><option value="chick_purchase">Chick Purchase</option>
+                <option value="medication">Medication</option><option value="vaccination_cost">Vaccination Cost</option>
+                <option value="labour">Labour</option><option value="utilities">Utilities</option>
+                <option value="equipment">Equipment</option><option value="transport">Transport</option>
+                <option value="maintenance">Maintenance</option><option value="other_expense">Other Expense</option>
+              </optgroup>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Amount (GHS)</label><input type="number" name="amount" min="0.01" step="0.01" required/></div>
+          <div class="form-group"><label>Date</label><input type="date" name="transaction_date" required/></div>
+        </div>
+        <div class="form-group"><label>Description</label><input type="text" name="description" placeholder="e.g. Egg sale — 4 crates to Accra market" required/></div>
+        <div class="form-row">
+          <div class="form-group"><label>Payment Method</label>
+            <select name="payment_method"><option value="cash">Cash</option><option value="mobile_money">Mobile Money</option><option value="bank_transfer">Bank Transfer</option><option value="cheque">Cheque</option><option value="credit">Credit</option></select>
+          </div>
+          <div class="form-group"><label>Counterparty Name</label><input type="text" name="counterparty_name" placeholder="Buyer / Supplier"/></div>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn btn-outline" onclick="hideModal('modal-tx')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Transaction</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- New User -->
+<div id="modal-user" class="modal hidden">
+  <div class="modal-box">
+    <div class="modal-head"><h3>👤 New User</h3><button class="modal-close" onclick="hideModal('modal-user')">✕</button></div>
+    <div class="modal-body">
+      <form id="form-user">
+        <div class="form-row">
+          <div class="form-group"><label>Full Name</label><input type="text" name="full_name" placeholder="Jane Doe" required/></div>
+          <div class="form-group"><label>Phone</label><input type="tel" name="phone" placeholder="+233..."/></div>
+        </div>
+        <div class="form-group"><label>Email Address</label><input type="email" name="email" placeholder="user@farm.com" required/></div>
+        <div class="form-group"><label>Password <small>(min 8 characters)</small></label><input type="password" name="password" minlength="8" placeholder="••••••••" required/></div>
+        <div class="form-group"><label>Role</label>
+          <select name="role" required>
+            <option value="farm_manager">Farm Manager — ops + view finance</option>
+            <option value="finance_officer">Finance Officer — finance + view ops</option>
+            <option value="veterinarian">Veterinarian — health records only</option>
+            <option value="data_entry">Data Entry — add records only</option>
+            <option value="viewer">Viewer — read-only access</option>
+          </select>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn btn-outline" onclick="hideModal('modal-user')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create User</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Permissions -->
+<div id="modal-perms" class="modal hidden">
+  <div class="modal-box modal-lg">
+    <div class="modal-head">
+      <h3>🔐 Edit Permissions — <span id="perm-user-name"></span></h3>
+      <button class="modal-close" onclick="hideModal('modal-perms')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--gray-500);font-size:13px;margin-bottom:16px">These override the default role permissions for this user specifically.</p>
+      <table class="perm-table">
+        <thead>
+          <tr>
+            <th>Module</th>
+            <th>View</th><th>Create</th><th>Edit</th><th>Delete</th><th>Approve</th>
+          </tr>
+        </thead>
+        <tbody id="perm-tbody"></tbody>
+      </table>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-outline" onclick="hideModal('modal-perms')">Cancel</button>
+      <button type="button" class="btn btn-primary" onclick="savePermissions()">Save Permissions</button>
+    </div>
+  </div>
+</div>
+
+<!-- Update Bird Age Modal -->
+<div id="modal-age" class="modal hidden">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-head"><h3>🗓 Update Bird Age</h3><button class="modal-close" onclick="hideModal('modal-age')">✕</button></div>
+    <div class="modal-body">
+      <div id="age-batch-info" style="background:var(--gray-50);border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px"></div>
+      <form id="form-age">
+        <input type="hidden" name="batch_id" id="age-batch-id"/>
+        <div class="form-group">
+          <label>Enter Current Age in Weeks</label>
+          <input type="number" id="age-weeks-input" min="0" step="1" placeholder="e.g. 14" oninput="calcDocFromWeeks()"/>
+          <span style="font-size:11px;color:var(--gray-400);margin-top:4px;display:block">Automatically calculates the DOC date below</span>
+        </div>
+        <div style="text-align:center;color:var(--gray-300);margin:4px 0;font-size:18px">— or set directly —</div>
+        <div class="form-group">
+          <label>Date of Chick (DOC Date)</label>
+          <input type="date" name="doc_date" id="age-doc-date" oninput="calcWeeksFromDoc()"/>
+        </div>
+        <div id="age-preview" style="background:#f0fdf4;border-radius:8px;padding:10px 14px;font-size:13px;color:#15803d;font-weight:600;display:none;margin-bottom:12px"></div>
+        <div class="modal-foot">
+          <button type="button" class="btn btn-outline" onclick="hideModal('modal-age')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Age</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- PDF / Excel export libraries (CDN) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="/app.js?v=20260508e"></script>
+</body>
+</html>
