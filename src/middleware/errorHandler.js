@@ -9,8 +9,7 @@ const PG_ERRORS = {
 const errorHandler = (err, req, res, next) => {
   // PostgreSQL errors — return 409/422 with a readable message
   if (err.code && PG_ERRORS[err.code]) {
-    const detail = err.detail ? ` (${err.detail.replace(/Key \(.*?\)=\(/, '').replace(/\).*/, '')})` : '';
-    return res.status(err.code === '23505' ? 409 : 422).json({ error: PG_ERRORS[err.code] + detail });
+    return res.status(err.code === '23505' ? 409 : 422).json({ error: PG_ERRORS[err.code] });
   }
 
   const status = err.status || 500;

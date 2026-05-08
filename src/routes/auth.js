@@ -13,6 +13,32 @@ const ACCESS_TTL  = '15m';
 const REFRESH_TTL = '7d';
 const REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
+// In-memory failed-login tracker: email -> { count, lockedUntil }
+const loginAttempts = new Map();
+const MAX_ATTEMPTS  = 5;
+const LOCKOUT_MS    = 15 * 60 * 1000; // 15 minutes
+
+function checkLockout(email) {
+  const entry = loginAttempts.get(email);
+  if (!entry) return null;
+  if (entry.lockedUntil && Date.now() < entry.lockedUntil) {
+    const remaining = Math.ceil((entry.lockedUntil - Date.now()) / 60000);
+    return `Account locked. Try again in ${remaining} minute(s).`;
+  }
+  return null;
+}
+
+function recordFailure(email) {
+  const entry = loginAttempts.get(email) || { count: 0, lockedUntil: null };
+  entry.count += 1;
+  if (entry.count >= MAX_ATTEMPTS) entry.lockedUntil = Date.now() + LOCKOUT_MS;
+  loginAttempts.set(email, entry);
+}
+
+function clearFailures(email) {
+  loginAttempts.delete(email);
+}
+
 function issueTokens(userId, orgId, role) {
   const payload = { userId, orgId, role };
   const accessToken  = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: ACCESS_TTL });
@@ -89,15 +115,31 @@ router.post('/login', [
   if (!errors.isEmpty()) return res.status(422).json({ errors: errors.array() });
 
   const { email, password } = req.body;
+
+  const lockoutMsg = checkLockout(email);
+  if (lockoutMsg) return res.status(429).json({ error: lockoutMsg });
+
   const { rows } = await pool.query(
     `SELECT id, org_id, email, password_hash, full_name, role, is_active FROM users WHERE email = $1`,
     [email]
   );
   const user = rows[0];
-  if (!user || !await bcrypt.compare(password, user.password_hash))
+  const passwordOk = user && await bcrypt.compare(password, user.password_hash);
+
+  if (!user || !passwordOk) {
+    recordFailure(email);
+    await pool.query(
+      `INSERT INTO audit_logs (org_id, user_id, action, resource_type, ip_address, user_agent, new_value)
+       VALUES ($1, $2, 'login_failed', 'auth', $3, $4, $5)`,
+      [user?.org_id || null, user?.id || null, req.ip, req.headers['user-agent'], JSON.stringify({ email })]
+    ).catch(() => {});
     return res.status(401).json({ error: 'Invalid email or password' });
+  }
+
   if (!user.is_active)
     return res.status(403).json({ error: 'Account is deactivated. Contact your administrator.' });
+
+  clearFailures(email);
 
   const { accessToken, refreshToken } = issueTokens(user.id, user.org_id, user.role);
   await pool.query(
@@ -106,6 +148,11 @@ router.post('/login', [
     [user.id, refreshToken, req.ip, req.headers['user-agent'], new Date(Date.now() + REFRESH_TTL_MS)]
   );
   await pool.query(`UPDATE users SET last_login_at = NOW() WHERE id = $1`, [user.id]);
+  await pool.query(
+    `INSERT INTO audit_logs (org_id, user_id, action, resource_type, ip_address, user_agent)
+     VALUES ($1, $2, 'login_success', 'auth', $3, $4)`,
+    [user.org_id, user.id, req.ip, req.headers['user-agent']]
+  ).catch(() => {});
 
   res.json({
     accessToken, refreshToken,
