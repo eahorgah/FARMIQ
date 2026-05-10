@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>FarmIQ — Poultry Management</title>
-  <link rel="stylesheet" href="/style.css?v=20260508e"/>
+  <link rel="stylesheet" href="/style.css?v=20260510b"/>
 </head>
 <body>
 
@@ -207,6 +207,17 @@
                     <span class="egg-step-num">2</span>
                     <span class="egg-step-title">Enter Production Data</span>
                   </div>
+                  <div class="form-group">
+                    <label>Egg Type <span style="color:#dc2626">*</span></label>
+                    <select name="egg_type" required>
+                      <option value="">— Select egg type —</option>
+                      <option value="jumbo">Jumbo</option>
+                      <option value="extra_large">Extra Large</option>
+                      <option value="large">Large</option>
+                      <option value="medium">Medium</option>
+                      <option value="pullet">Pullet</option>
+                    </select>
+                  </div>
                   <div class="form-row" style="gap:14px">
                     <div class="form-group">
                       <label>Eggs Collected <span style="color:#dc2626">*</span></label>
@@ -313,6 +324,7 @@
               <tr>
                 <th>Date</th>
                 <th>Batch No.</th>
+                <th>Egg Type</th>
                 <th>Product / Breed</th>
                 <th>Purpose</th>
                 <th>Birds</th>
@@ -723,7 +735,7 @@
       <div id="section-users" class="section hidden">
         <div class="section-header">
           <h2 class="section-title"><span class="section-icon icon-users">👥</span> Users & Access Control</h2>
-          <button class="btn btn-primary btn-sm" onclick="showModal('modal-user')">+ New User</button>
+          <button class="btn btn-primary btn-sm" onclick="openCreateUser()">+ New User</button>
         </div>
 
         <!-- Role reference -->
@@ -1024,6 +1036,9 @@
         <div class="form-group"><label>Password <small>(min 8 characters)</small></label><input type="password" name="password" minlength="8" placeholder="••••••••" required/></div>
         <div class="form-group"><label>Role</label>
           <select name="role" required>
+            <option value="" disabled selected>— Select role —</option>
+            <option value="super_admin" class="role-opt-super" style="display:none">Super Admin — full system access</option>
+            <option value="farm_owner" class="role-opt-owner" style="display:none">Farm Owner — full farm + finance</option>
             <option value="farm_manager">Farm Manager — ops + view finance</option>
             <option value="finance_officer">Finance Officer — finance + view ops</option>
             <option value="veterinarian">Veterinarian — health records only</option>
@@ -1098,6 +1113,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="/app.js?v=20260508e"></script>
+<script src="/app.js?v=20260510b"></script>
 </body>
 </html>

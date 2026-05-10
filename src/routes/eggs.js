@@ -5,10 +5,13 @@ const { authenticate, requirePermission } = require('../middleware/auth');
 
 router.use(authenticate);
 
+const VALID_EGG_TYPES = ['jumbo', 'extra_large', 'large', 'medium', 'pullet'];
+
 router.post('/', requirePermission('flock', 'create'), async (req, res) => {
   const { batch_id, pen_id, record_date, notes } = req.body;
   const eggs_collected = Number(req.body.eggs_collected);
   const broken_eggs    = Number(req.body.broken_eggs ?? 0);
+  const egg_type       = VALID_EGG_TYPES.includes(req.body.egg_type) ? req.body.egg_type : null;
 
   if (!batch_id || !record_date || isNaN(eggs_collected))
     return res.status(422).json({ error: 'batch_id, record_date, eggs_collected required' });
@@ -25,16 +28,17 @@ router.post('/', requirePermission('flock', 'create'), async (req, res) => {
 
   const { rows: [record] } = await pool.query(
     `INSERT INTO egg_production_records
-       (org_id, batch_id, pen_id, record_date, eggs_collected, broken_eggs, laying_rate, notes, recorded_by)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+       (org_id, batch_id, pen_id, record_date, eggs_collected, broken_eggs, egg_type, laying_rate, notes, recorded_by)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
      ON CONFLICT (batch_id, record_date) DO UPDATE
        SET eggs_collected = EXCLUDED.eggs_collected,
            broken_eggs    = EXCLUDED.broken_eggs,
+           egg_type       = EXCLUDED.egg_type,
            laying_rate    = EXCLUDED.laying_rate,
            notes          = EXCLUDED.notes
      RETURNING *`,
     [req.user.org_id, batch_id, pen_id || null, record_date,
-     eggs_collected, broken_eggs, layingRate, notes || null, req.user.id]
+     eggs_collected, broken_eggs, egg_type, layingRate, notes || null, req.user.id]
   );
   res.status(201).json({ record });
 });

@@ -417,8 +417,14 @@ function renderEggsTable(records) {
     const purposeLabel = purpose
       ? purpose.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
       : '—';
+    const eggTypeLabels = { jumbo:'Jumbo', extra_large:'Extra Large', large:'Large', medium:'Medium', pullet:'Pullet' };
+    const eggTypeColors = { jumbo:'b-purple', extra_large:'b-blue', large:'b-cyan', medium:'b-green', pullet:'b-yellow' };
+    const eggTypeCell = r.egg_type
+      ? `<span class="badge ${eggTypeColors[r.egg_type]||'b-gray'}">${eggTypeLabels[r.egg_type]||r.egg_type}</span>`
+      : '—';
     return `<td>${fmtDate(r.record_date)}</td>
             <td><strong>${batchCode}</strong></td>
+            <td>${eggTypeCell}</td>
             <td>${breed}</td>
             <td>${purposeLabel}</td>
             <td>${birdCount != null ? Number(birdCount).toLocaleString() : '—'}</td>
@@ -426,7 +432,7 @@ function renderEggsTable(records) {
             <td>${broken}</td>
             <td>${saleable.toLocaleString()}</td>
             <td>${rateCell}</td>`;
-  }, 9, 'No egg records yet — log your first collection');
+  }, 10, 'No egg records yet — log your first collection');
 }
 
 async function filterEggs() {
@@ -1138,6 +1144,17 @@ function clearAuditFilters() {
 }
 
 // ── Users & Access Control ────────────────────────────────────
+function openCreateUser() {
+  const isSuperAdmin = currentUser?.role === 'super_admin';
+  const isFarmOwner  = currentUser?.role === 'farm_owner' || isSuperAdmin;
+  document.querySelectorAll('.role-opt-super').forEach(o => o.style.display = isSuperAdmin ? '' : 'none');
+  document.querySelectorAll('.role-opt-owner').forEach(o => o.style.display = isFarmOwner  ? '' : 'none');
+  // Reset the select so placeholder shows
+  const sel = document.querySelector('#modal-user select[name="role"]');
+  if (sel) sel.value = '';
+  showModal('modal-user');
+}
+
 async function loadUsers() {
   try {
     const data = await api('GET', '/users');
@@ -1159,7 +1176,9 @@ async function loadUsers() {
         <td>${u.is_active ? '<span class="user-status-active" style="color:var(--brand);font-weight:600;font-size:12px">Active</span>' : '<span style="color:var(--gray-400);font-size:12px">Inactive</span>'}</td>
         <td style="color:var(--gray-400);font-size:12px">${lastLogin}</td>
         <td style="display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn btn-info btn-xs" onclick="openPermissions('${u.id}', '${u.full_name}', ${JSON.stringify(u.permissions || {}).replace(/"/g,'&quot;')})">🔐 Permissions</button>
+          ${['farm_owner','super_admin'].includes(currentUser?.role)
+            ? `<button class="btn btn-info btn-xs" onclick="openPermissions('${u.id}', '${u.full_name}', ${JSON.stringify(u.permissions || {}).replace(/"/g,'&quot;')})">🔐 Permissions</button>`
+            : ''}
           <button class="btn btn-audit btn-xs" onclick="viewUserAudit('${u.id}', '${u.full_name}')">🔍 Activity</button>
         </td>`;
     }, 6, 'No users found');
@@ -1483,8 +1502,12 @@ async function ensureBatches() {
 }
 
 // ── Init ──────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', async () => {
-  if (token && currentUser) { await loadUserPermissions(); showApp(); } else showAuth();
+document.addEventListener('DOMContentLoaded', () => {
+  if (token && currentUser) {
+    loadUserPermissions().finally(() => showApp());
+  } else {
+    showAuth();
+  }
 
   // Auth tabs
   el('tab-login').onclick = () => {

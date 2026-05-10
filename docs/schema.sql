@@ -202,6 +202,7 @@ CREATE TABLE egg_production_records (
   eggs_collected  INTEGER NOT NULL DEFAULT 0,
   broken_eggs     INTEGER DEFAULT 0,
   saleable_eggs   INTEGER GENERATED ALWAYS AS (eggs_collected - broken_eggs) STORED,
+  egg_type        VARCHAR(20) CHECK (egg_type IN ('jumbo','extra_large','large','medium','pullet')),
   laying_rate     NUMERIC(5,2),  -- percentage
   notes           TEXT,
   recorded_by     UUID REFERENCES users(id),

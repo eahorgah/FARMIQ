@@ -33,16 +33,16 @@ router.post('/', requirePermission('users', 'create'),
   [
     body('email').isEmail().normalizeEmail(),
     body('full_name').notEmpty().trim(),
-    body('role').isIn(['farm_owner','farm_manager','finance_officer','veterinarian','data_entry','viewer']),
+    body('role').isIn(['super_admin','farm_owner','farm_manager','finance_officer','veterinarian','data_entry','viewer']),
     body('password').isLength({ min: 8 }),
   ],
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(422).json({ errors: errors.array() });
 
-    // Only super_admin can create farm_owner; farm_owner can create others
-    if (req.body.role === 'farm_owner' && req.user.role !== 'super_admin')
-      return res.status(403).json({ error: 'Only super_admin can create farm_owner accounts' });
+    // Only super_admin can create super_admin accounts
+    if (req.body.role === 'super_admin' && req.user.role !== 'super_admin')
+      return res.status(403).json({ error: 'Only super_admin can create super_admin accounts' });
 
     const { email, full_name, role, phone, password } = req.body;
     const hash = await bcrypt.hash(password, 12);
