@@ -117,6 +117,31 @@ router.post('/daily-records',
   }
 );
 
+// GET /api/flock/daily-records
+router.get('/daily-records', requirePermission('flock', 'view'), async (req, res) => {
+  const { batch_id, date_from, date_to, limit = 100, page = 1 } = req.query;
+  const conditions = ['dr.org_id = $1'];
+  const values = [req.user.org_id];
+  let i = 2;
+  if (batch_id)  { conditions.push(`dr.batch_id = $${i++}`); values.push(batch_id); }
+  if (date_from) { conditions.push(`dr.record_date >= $${i++}`); values.push(date_from); }
+  if (date_to)   { conditions.push(`dr.record_date <= $${i++}`); values.push(date_to); }
+
+  const offset = (page - 1) * limit;
+  const { rows } = await pool.query(
+    `SELECT dr.*, b.batch_code, b.breed,
+            u.full_name AS recorded_by_name
+     FROM daily_flock_records dr
+     JOIN batches b ON b.id = dr.batch_id
+     LEFT JOIN users u ON u.id = dr.recorded_by
+     WHERE ${conditions.join(' AND ')}
+     ORDER BY dr.record_date DESC, dr.created_at DESC
+     LIMIT $${i++} OFFSET $${i}`,
+    [...values, limit, offset]
+  );
+  res.json({ records: rows });
+});
+
 // GET /api/flock/pens
 router.get('/pens', requirePermission('flock', 'view'), async (req, res) => {
   const { rows } = await pool.query(

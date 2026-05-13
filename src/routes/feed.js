@@ -30,6 +30,33 @@ router.post('/transactions', requirePermission('feed', 'create'), async (req, re
   res.status(201).json({ feed_transaction: tx });
 });
 
+// PATCH /api/feed/inventory/:id — update order limit / min stock
+router.patch('/inventory/:id', requirePermission('feed', 'edit'), async (req, res) => {
+  const { minimum_stock_kg, order_limit_kg, unit_cost_per_kg, brand, supplier } = req.body;
+  const updates = []; const values = []; let i = 1;
+
+  // order_limit_kg is an alias for minimum_stock_kg
+  const minStock = minimum_stock_kg ?? order_limit_kg;
+  if (minStock !== undefined) {
+    if (+minStock < 0) return res.status(422).json({ error: 'Order limit must be >= 0' });
+    updates.push(`minimum_stock_kg = $${i++}`); values.push(+minStock);
+  }
+  if (unit_cost_per_kg !== undefined) { updates.push(`unit_cost_per_kg = $${i++}`); values.push(unit_cost_per_kg || null); }
+  if (brand     !== undefined) { updates.push(`brand = $${i++}`);    values.push(brand    || null); }
+  if (supplier  !== undefined) { updates.push(`supplier = $${i++}`); values.push(supplier || null); }
+
+  if (!updates.length) return res.status(400).json({ error: 'No fields to update' });
+
+  updates.push(`updated_at = NOW()`);
+  values.push(req.params.id, req.user.org_id);
+  const { rowCount, rows } = await pool.query(
+    `UPDATE feed_inventory SET ${updates.join(', ')} WHERE id = $${i++} AND org_id = $${i} RETURNING *`,
+    values
+  );
+  if (!rowCount) return res.status(404).json({ error: 'Inventory record not found' });
+  res.json({ inventory: rows[0] });
+});
+
 router.get('/transactions', requirePermission('feed', 'view'), async (req, res) => {
   const { rows } = await pool.query(
     `SELECT ft.*, b.batch_code, u.full_name AS recorded_by_name

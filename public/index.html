@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>FarmIQ — Poultry Management</title>
-  <link rel="stylesheet" href="/style.css?v=20260510b"/>
+  <link rel="stylesheet" href="/style.css?v=20260513b"/>
 </head>
 <body>
 
@@ -117,16 +117,81 @@
           <h2 class="section-title"><span class="section-icon icon-flock">🐔</span> Flock Management</h2>
           <div class="header-actions">
             <button class="btn btn-outline btn-sm" onclick="showModal('modal-pen')">+ New Pen</button>
+            <button class="btn btn-danger btn-sm" onclick="showModal('modal-mortality')">💀 Record Deaths</button>
             <button class="btn btn-primary btn-sm" onclick="showModal('modal-batch')">+ New Batch</button>
           </div>
         </div>
+
+        <!-- Mortality Stats Row -->
+        <div class="mortality-stats-row" id="mortality-stats-row">
+          <div class="mortality-stat-card mortality-total">
+            <div class="mortality-stat-icon">💀</div>
+            <div class="mortality-stat-body">
+              <div class="mortality-stat-label">Total Deaths (30d)</div>
+              <div class="mortality-stat-value" id="mort-stat-total">—</div>
+            </div>
+          </div>
+          <div class="mortality-stat-card mortality-culled">
+            <div class="mortality-stat-icon">🔪</div>
+            <div class="mortality-stat-body">
+              <div class="mortality-stat-label">Culled (30d)</div>
+              <div class="mortality-stat-value" id="mort-stat-culled">—</div>
+            </div>
+          </div>
+          <div class="mortality-stat-card mortality-sold">
+            <div class="mortality-stat-icon">🏷️</div>
+            <div class="mortality-stat-body">
+              <div class="mortality-stat-label">Sold (30d)</div>
+              <div class="mortality-stat-value" id="mort-stat-sold">—</div>
+            </div>
+          </div>
+          <div class="mortality-stat-card mortality-rate">
+            <div class="mortality-stat-icon">📉</div>
+            <div class="mortality-stat-body">
+              <div class="mortality-stat-label">Today's Losses</div>
+              <div class="mortality-stat-value" id="mort-stat-today">—</div>
+            </div>
+          </div>
+        </div>
+
         <div class="card">
-          <div class="card-header"><span class="card-title">Batches</span></div>
+          <div class="card-header"><span class="card-title">Batches &amp; Live Count</span></div>
           <table class="table">
             <thead><tr><th>Batch No.</th><th>Product / Breed</th><th>Purpose</th><th>Status</th><th>Birds</th><th>Age (wks)</th><th>Pen</th><th>Eggs 7d</th><th>Actions</th></tr></thead>
             <tbody id="batches-tbody"></tbody>
           </table>
         </div>
+
+        <!-- Mortality / Daily Records Table -->
+        <div class="card mt">
+          <div class="card-header">
+            <span class="card-title">Death &amp; Loss Records</span>
+            <div style="display:flex;gap:8px;align-items:center">
+              <select id="mort-filter-batch" class="form-control" style="width:180px;padding:4px 8px" onchange="loadMortality()">
+                <option value="">All Batches</option>
+              </select>
+              <input type="date" id="mort-filter-from" class="form-control" style="width:140px;padding:4px 8px" onchange="loadMortality()" placeholder="From"/>
+              <input type="date" id="mort-filter-to"   class="form-control" style="width:140px;padding:4px 8px" onchange="loadMortality()" placeholder="To"/>
+            </div>
+          </div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Batch</th>
+                <th>Opening Count</th>
+                <th style="color:#ef4444">Deaths</th>
+                <th style="color:#f97316">Culled</th>
+                <th style="color:#3b82f6">Sold</th>
+                <th style="color:#22c55e">Closing Count</th>
+                <th>Cause / Notes</th>
+                <th>Recorded By</th>
+              </tr>
+            </thead>
+            <tbody id="mortality-tbody"></tbody>
+          </table>
+        </div>
+
         <div class="card mt">
           <div class="card-header"><span class="card-title">Pens / Housing</span></div>
           <table class="table">
@@ -429,16 +494,19 @@
           </div>
           <div>
             <div class="card">
-              <div class="card-header"><span class="card-title">Current Inventory</span></div>
+              <div class="card-header">
+                <span class="card-title">Current Inventory &amp; Order Limits</span>
+                <span style="font-size:12px;color:var(--gray-400)">Click <strong>✏ Edit</strong> on a row to set the reorder threshold</span>
+              </div>
               <table class="table">
-                <thead><tr><th>Feed Type</th><th>Stock</th><th>Min Level</th><th>Unit Cost</th><th>Status</th></tr></thead>
+                <thead><tr><th>Feed Type</th><th>Current Stock</th><th>Order Limit (Min)</th><th>Unit Cost</th><th>Supplier</th><th>Status</th></tr></thead>
                 <tbody id="inventory-tbody"></tbody>
               </table>
             </div>
             <div class="card mt">
               <div class="card-header"><span class="card-title">Recent Transactions</span></div>
               <table class="table">
-                <thead><tr><th>Date</th><th>Type</th><th>Feed</th><th>Qty</th><th>Total</th></tr></thead>
+                <thead><tr><th>Date</th><th>Type</th><th>Feed</th><th>Qty</th><th>Total</th><th>Supplier</th></tr></thead>
                 <tbody id="feed-tx-tbody"></tbody>
               </table>
             </div>
@@ -700,34 +768,110 @@
       <!-- ── REPORTS ────────────────────────────────────── -->
       <div id="section-reports" class="section hidden">
         <div class="section-header">
-          <h2 class="section-title"><span class="section-icon icon-reports">📈</span> Reports — <span id="report-year"></span></h2>
-          <div class="header-actions">
+          <h2 class="section-title"><span class="section-icon icon-reports">📈</span> Farm Reports</h2>
+          <div class="header-actions" style="gap:8px;flex-wrap:wrap">
+            <select id="rpt-year" onchange="loadReports()" style="padding:7px 10px;border-radius:8px;border:1.5px solid var(--gray-200);font-size:13px;background:var(--white);color:var(--gray-700)"></select>
+            <select id="rpt-month" onchange="loadReports()" style="padding:7px 10px;border-radius:8px;border:1.5px solid var(--gray-200);font-size:13px;background:var(--white);color:var(--gray-700)">
+              <option value="">All Months</option>
+              <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+              <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+              <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+              <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+            </select>
             <button class="btn btn-excel btn-sm" onclick="exportExcel()">⬇ Excel</button>
             <button class="btn btn-pdf btn-sm" onclick="exportPDF()">⬇ PDF</button>
           </div>
         </div>
-        <div class="stats-grid four">
+
+        <!-- Summary stats -->
+        <div class="stats-grid four" style="margin-bottom:16px">
           <div class="stat-card stat-income"><span class="stat-emoji">📈</span><div class="stat-label">Total Income</div><div class="stat-value" id="pl-income">—</div></div>
           <div class="stat-card stat-exp"><span class="stat-emoji">📉</span><div class="stat-label">Total Expenses</div><div class="stat-value" id="pl-expenses">—</div></div>
           <div class="stat-card stat-profit"><span class="stat-emoji">💰</span><div class="stat-label">Net Profit</div><div class="stat-value" id="pl-profit">—</div></div>
           <div class="stat-card stat-birds"><span class="stat-emoji">📊</span><div class="stat-label">Profit Margin</div><div class="stat-value" id="pl-margin">—</div></div>
         </div>
-        <div class="two-col mt" style="grid-template-columns:1fr 1fr">
-          <div class="card">
-            <div class="card-header"><span class="card-title">Income Breakdown</span></div>
-            <table class="table"><thead><tr><th>Category</th><th>Amount (GHS)</th></tr></thead><tbody id="pl-income-tbody"></tbody></table>
+
+        <!-- Report tabs -->
+        <div class="rpt-tabs">
+          <button class="rpt-tab active" onclick="switchReportTab('financial')">📊 Financial</button>
+          <button class="rpt-tab" onclick="switchReportTab('transactions')">💰 Transactions</button>
+          <button class="rpt-tab" onclick="switchReportTab('eggs')">🥚 Egg Production</button>
+          <button class="rpt-tab" onclick="switchReportTab('flock')">🐔 Flock</button>
+          <button class="rpt-tab" onclick="switchReportTab('health')">💊 Health</button>
+          <button class="rpt-tab" onclick="switchReportTab('feed')">🌾 Feed</button>
+        </div>
+
+        <!-- Financial tab -->
+        <div id="rpt-tab-financial" class="rpt-panel">
+          <div class="two-col" style="grid-template-columns:1fr 1fr">
+            <div class="card">
+              <div class="card-header"><span class="card-title">Income Breakdown</span></div>
+              <table class="table"><thead><tr><th>Category</th><th>Txns</th><th>Amount (GHS)</th></tr></thead><tbody id="pl-income-tbody"></tbody></table>
+            </div>
+            <div class="card">
+              <div class="card-header"><span class="card-title">Expense Breakdown</span></div>
+              <table class="table"><thead><tr><th>Category</th><th>Txns</th><th>Amount (GHS)</th></tr></thead><tbody id="pl-expense-tbody"></tbody></table>
+            </div>
           </div>
-          <div class="card">
-            <div class="card-header"><span class="card-title">Expense Breakdown</span></div>
-            <table class="table"><thead><tr><th>Category</th><th>Amount (GHS)</th></tr></thead><tbody id="pl-expense-tbody"></tbody></table>
+          <div class="card" style="margin-top:16px">
+            <div class="card-header"><span class="card-title">Weekly Egg Production</span></div>
+            <table class="table"><thead><tr><th>Week</th><th>Total Eggs</th><th>Saleable</th><th>Avg Lay Rate</th></tr></thead><tbody id="prod-tbody"></tbody></table>
           </div>
         </div>
-        <div class="card mt">
-          <div class="card-header"><span class="card-title">Weekly Egg Production</span></div>
-          <table class="table">
-            <thead><tr><th>Week</th><th>Total Eggs</th><th>Saleable</th><th>Avg Lay Rate</th></tr></thead>
-            <tbody id="prod-tbody"></tbody>
-          </table>
+
+        <!-- Transactions tab -->
+        <div id="rpt-tab-transactions" class="rpt-panel hidden">
+          <div class="card">
+            <div class="card-header"><span class="card-title">All Transactions</span><span id="rpt-tx-count" style="font-size:12px;color:var(--gray-400)"></span></div>
+            <table class="table">
+              <thead><tr><th>Date</th><th>Ref</th><th>Type</th><th>Category</th><th>Description</th><th>Counterparty</th><th>Payment</th><th>Amount (GHS)</th><th>Status</th></tr></thead>
+              <tbody id="rpt-tx-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Eggs tab -->
+        <div id="rpt-tab-eggs" class="rpt-panel hidden">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Egg Production Records</span><span id="rpt-eggs-count" style="font-size:12px;color:var(--gray-400)"></span></div>
+            <table class="table">
+              <thead><tr><th>Date</th><th>Batch</th><th>Egg Type</th><th>Collected</th><th>Broken</th><th>Saleable</th><th>Lay Rate</th></tr></thead>
+              <tbody id="rpt-eggs-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Flock tab -->
+        <div id="rpt-tab-flock" class="rpt-panel hidden">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Flock &amp; Batch Status</span></div>
+            <table class="table">
+              <thead><tr><th>Batch Code</th><th>Breed</th><th>Purpose</th><th>Status</th><th>Current Count</th><th>Age (Wks)</th><th>Pen</th><th>DOC Date</th></tr></thead>
+              <tbody id="rpt-flock-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Health tab -->
+        <div id="rpt-tab-health" class="rpt-panel hidden">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Health Records</span><span id="rpt-health-count" style="font-size:12px;color:var(--gray-400)"></span></div>
+            <table class="table">
+              <thead><tr><th>Date</th><th>Batch</th><th>Event Type</th><th>Diagnosis</th><th>Severity</th><th>Affected</th><th>Mortality</th><th>Status</th><th>Vet</th></tr></thead>
+              <tbody id="rpt-health-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Feed tab -->
+        <div id="rpt-tab-feed" class="rpt-panel hidden">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Feed Transactions</span><span id="rpt-feed-count" style="font-size:12px;color:var(--gray-400)"></span></div>
+            <table class="table">
+              <thead><tr><th>Date</th><th>Feed Type</th><th>Transaction</th><th>Quantity (kg)</th><th>Cost (GHS)</th><th>Batch</th><th>Recorded By</th></tr></thead>
+              <tbody id="rpt-feed-tbody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -950,6 +1094,69 @@
   </div>
 </div>
 
+<!-- Record Mortality / Deaths -->
+<div id="modal-mortality" class="modal hidden">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-head">
+      <h3>💀 Record Deaths &amp; Losses</h3>
+      <button class="modal-close" onclick="hideModal('modal-mortality')">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="form-mortality" onsubmit="saveMortality(event)">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Batch <span class="req">*</span></label>
+            <select name="batch_id" id="mort-batch-sel" required>
+              <option value="">Select batch</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Date <span class="req">*</span></label>
+            <input type="date" name="record_date" id="mort-date" required/>
+          </div>
+        </div>
+
+        <!-- Live count preview -->
+        <div id="mort-count-preview" class="mort-count-banner hidden">
+          Current live count: <strong id="mort-live-count">—</strong> birds
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Deaths (Natural / Disease) <span class="req">*</span></label>
+            <input type="number" name="mortalities" id="mort-deaths" min="0" value="0" required oninput="updateMortPreview()"/>
+            <span class="field-hint">Chickens found dead</span>
+          </div>
+          <div class="form-group">
+            <label>Culled</label>
+            <input type="number" name="culled" id="mort-culled" min="0" value="0" oninput="updateMortPreview()"/>
+            <span class="field-hint">Sick or unproductive birds removed</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Sold</label>
+            <input type="number" name="sold" id="mort-sold" min="0" value="0" oninput="updateMortPreview()"/>
+            <span class="field-hint">Birds sold out of batch</span>
+          </div>
+          <div class="form-group" id="mort-closing-group">
+            <label>Projected Closing Count</label>
+            <div class="mort-closing-val" id="mort-closing-preview">—</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Cause / Notes</label>
+          <textarea name="notes" rows="2" placeholder="e.g. Newcastle disease, predator attack, heat stress…"></textarea>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn btn-outline" onclick="hideModal('modal-mortality')">Cancel</button>
+          <button type="submit" class="btn btn-danger">Save Record</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <!-- New Pen -->
 <div id="modal-pen" class="modal hidden">
   <div class="modal-box">
@@ -969,6 +1176,48 @@
         <div class="modal-foot">
           <button type="button" class="btn btn-outline" onclick="hideModal('modal-pen')">Cancel</button>
           <button type="submit" class="btn btn-primary">Create Pen</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Set Stock Order Limit -->
+<div id="modal-stock-limit" class="modal hidden">
+  <div class="modal-box" style="max-width:460px">
+    <div class="modal-head">
+      <h3>📦 Set Order Limit — <span id="limit-feed-type" style="color:var(--brand)"></span></h3>
+      <button class="modal-close" onclick="hideModal('modal-stock-limit')">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="form-stock-limit" onsubmit="saveStockLimit(event)">
+        <input type="hidden" id="limit-inv-id"/>
+        <div class="limit-info-box">
+          <span class="limit-info-icon">💡</span>
+          A <strong>Low Stock</strong> alert fires automatically when the current stock falls at or below the order limit you set here.
+        </div>
+        <div class="form-group">
+          <label>Order Limit / Minimum Stock (kg) <span class="req">*</span></label>
+          <input type="number" id="limit-min-stock" name="minimum_stock_kg" min="0" step="0.1" placeholder="e.g. 500" required/>
+          <span class="field-hint">When stock drops to or below this, the row shows "⚠ Low Stock"</span>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Unit Cost (GHS/kg)</label>
+            <input type="number" id="limit-unit-cost" name="unit_cost_per_kg" min="0" step="0.01" placeholder="0.00"/>
+          </div>
+          <div class="form-group">
+            <label>Brand</label>
+            <input type="text" id="limit-brand" name="brand" placeholder="e.g. Agricare"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Supplier</label>
+          <input type="text" id="limit-supplier" name="supplier" placeholder="Supplier name or contact"/>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn btn-outline" onclick="hideModal('modal-stock-limit')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Limit</button>
         </div>
       </form>
     </div>
@@ -1113,6 +1362,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="/app.js?v=20260510b"></script>
+<script src="/app.js?v=20260513b"></script>
 </body>
 </html>

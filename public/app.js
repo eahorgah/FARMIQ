@@ -188,6 +188,7 @@ async function loadFlock() {
   try {
     const [bd, pd] = await Promise.all([api('GET', '/flock/batches'), api('GET', '/flock/pens')]);
     flockBatches = bd.batches;
+    loadMortality();
 
     const canEdit = currentUser?.role === 'super_admin' || currentUser?.role === 'farm_owner'
       || currentUser?.role === 'farm_manager'
@@ -227,13 +228,127 @@ async function loadFlock() {
 }
 
 function refreshBatchDropdowns() {
-  // egg-batch shows batch code only (product name auto-fills separately)
   const eggOpts = '<option value="">Select batch number</option>' +
     flockBatches.map(b => `<option value="${b.id}" data-breed="${b.breed||''}" data-purpose="${b.purpose||''}" data-count="${b.current_count||0}">${b.batch_code}</option>`).join('');
   const healthOpts = '<option value="">Select batch</option>' +
     flockBatches.map(b => `<option value="${b.id}">${b.batch_code} — ${b.breed}</option>`).join('');
+  const mortOpts = '<option value="">Select batch</option>' +
+    flockBatches.map(b => {
+      const soldOut = ['sold','culled'].includes(b.status) ? ' [sold/culled]' : '';
+      return `<option value="${b.id}" data-count="${b.current_count||0}">${b.batch_code} — ${b.breed} (${(+b.current_count||0).toLocaleString()} birds)${soldOut}</option>`;
+    }).join('');
+  const mortFilterOpts = '<option value="">All Batches</option>' +
+    flockBatches.map(b => `<option value="${b.id}">${b.batch_code}</option>`).join('');
+
   const eggSel = el('egg-batch'); if (eggSel) eggSel.innerHTML = eggOpts;
   const hSel = el('health-batch'); if (hSel) hSel.innerHTML = healthOpts;
+  const mortSel = el('mort-batch-sel'); if (mortSel) mortSel.innerHTML = mortOpts;
+  const mortFilter = el('mort-filter-batch'); if (mortFilter) mortFilter.innerHTML = mortFilterOpts;
+}
+
+// ── Mortality / Death Records ──────────────────────────────────
+async function loadMortality() {
+  try {
+    const batchId = el('mort-filter-batch')?.value || '';
+    const from    = el('mort-filter-from')?.value  || '';
+    const to      = el('mort-filter-to')?.value    || '';
+    let qs = '';
+    if (batchId) qs += `&batch_id=${batchId}`;
+    if (from)    qs += `&date_from=${from}`;
+    if (to)      qs += `&date_to=${to}`;
+
+    const data = await api('GET', `/flock/daily-records?limit=200${qs}`);
+    const records = data.records || [];
+
+    // Summary stats (last 30 days)
+    const today = new Date().toISOString().split('T')[0];
+    const d30   = new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
+    const recent = records.filter(r => r.record_date >= d30 || String(r.record_date).split('T')[0] >= d30);
+    const todayRecs = records.filter(r => String(r.record_date).split('T')[0] === today);
+
+    const totalDeaths  = recent.reduce((s,r) => s + (+r.mortalities||0), 0);
+    const totalCulled  = recent.reduce((s,r) => s + (+r.culled||0), 0);
+    const totalSold    = recent.reduce((s,r) => s + (+r.sold||0), 0);
+    const todayLoss    = todayRecs.reduce((s,r) => s + (+r.mortalities||0) + (+r.culled||0), 0);
+
+    if (el('mort-stat-total'))  el('mort-stat-total').textContent  = totalDeaths.toLocaleString();
+    if (el('mort-stat-culled')) el('mort-stat-culled').textContent = totalCulled.toLocaleString();
+    if (el('mort-stat-sold'))   el('mort-stat-sold').textContent   = totalSold.toLocaleString();
+    if (el('mort-stat-today'))  el('mort-stat-today').textContent  = todayLoss.toLocaleString();
+
+    tbody('mortality-tbody', records, r => {
+      const deaths  = +r.mortalities || 0;
+      const culled  = +r.culled      || 0;
+      const sold    = +r.sold        || 0;
+      const closing = +r.closing_count;
+      const opening = +r.opening_count;
+      return `
+        <td>${fmtDate(r.record_date)}</td>
+        <td><span class="code">${r.batch_code||'—'}</span><br><small style="color:var(--gray-400)">${r.breed||''}</small></td>
+        <td style="text-align:right">${opening.toLocaleString()}</td>
+        <td style="text-align:right;font-weight:700;color:#ef4444">${deaths > 0 ? '-'+deaths.toLocaleString() : '<span style="color:var(--gray-400)">0</span>'}</td>
+        <td style="text-align:right;color:#f97316">${culled > 0 ? '-'+culled.toLocaleString() : '<span style="color:var(--gray-400)">0</span>'}</td>
+        <td style="text-align:right;color:#3b82f6">${sold > 0 ? sold.toLocaleString() : '<span style="color:var(--gray-400)">0</span>'}</td>
+        <td style="text-align:right;font-weight:700;color:#22c55e">${closing.toLocaleString()}</td>
+        <td style="max-width:200px;font-size:12px">${r.notes||'—'}</td>
+        <td style="font-size:12px;color:var(--gray-400)">${r.recorded_by_name||'—'}</td>`;
+    }, 9, 'No death records yet');
+  } catch (e) { console.error('loadMortality:', e); }
+}
+
+function onMortBatchChange() {
+  const sel = el('mort-batch-sel');
+  if (!sel || !sel.value) {
+    el('mort-count-preview')?.classList.add('hidden');
+    return;
+  }
+  const opt = sel.options[sel.selectedIndex];
+  const count = +(opt?.dataset.count || 0);
+  el('mort-live-count').textContent = count.toLocaleString();
+  el('mort-count-preview')?.classList.remove('hidden');
+  updateMortPreview();
+}
+
+function updateMortPreview() {
+  const sel = el('mort-batch-sel');
+  if (!sel?.value) return;
+  const opt     = sel.options[sel.selectedIndex];
+  const live    = +(opt?.dataset.count || 0);
+  const deaths  = +(el('mort-deaths')?.value || 0);
+  const culled  = +(el('mort-culled')?.value || 0);
+  const sold    = +(el('mort-sold')?.value   || 0);
+  const closing = Math.max(0, live - deaths - culled - sold);
+  const prev = el('mort-closing-preview');
+  if (prev) {
+    prev.textContent = closing.toLocaleString() + ' birds';
+    prev.style.color = closing === 0 ? '#ef4444' : closing < live * 0.8 ? '#f97316' : '#22c55e';
+  }
+}
+
+async function saveMortality(e) {
+  e.preventDefault();
+  const form = e.target;
+  const data = Object.fromEntries(new FormData(form));
+  data.mortalities = +(data.mortalities || 0);
+  data.culled      = +(data.culled      || 0);
+  data.sold        = +(data.sold        || 0);
+
+  const live  = +(el('mort-batch-sel')?.options[el('mort-batch-sel').selectedIndex]?.dataset.count || 0);
+  const total = data.mortalities + data.culled + data.sold;
+  if (total === 0) { toast('Enter at least one value (deaths, culled, or sold)', 'error'); return; }
+  if (live > 0 && total > live) { toast(`Total losses (${total}) exceed current live count (${live})`, 'error'); return; }
+
+  try {
+    await api('POST', '/flock/daily-records', data);
+    form.reset();
+    // reset date to today
+    const d = el('mort-date'); if (d) d.value = new Date().toISOString().split('T')[0];
+    el('mort-count-preview')?.classList.add('hidden');
+    if (el('mort-closing-preview')) el('mort-closing-preview').textContent = '—';
+    hideModal('modal-mortality');
+    toast('Death record saved — live count updated');
+    loadFlock();
+  } catch (err) { toast(err.message, 'error'); }
 }
 
 function onEggBatchChange() {
@@ -507,23 +622,78 @@ async function logHealth(form) {
 async function loadFeed() {
   try {
     const [inv, txs] = await Promise.all([api('GET', '/feed/inventory'), api('GET', '/feed/transactions')]);
-    tbody('inventory-tbody', inv.inventory, i =>
-      `<td><strong>${i.feed_type.replace(/_/g,' ')}</strong></td>
-       <td>${i.current_stock_kg} kg</td>
-       <td>${i.minimum_stock_kg} kg</td>
-       <td>${i.unit_cost_per_kg ? 'GHS '+i.unit_cost_per_kg : '—'}</td>
-       <td>${i.low_stock_alert ? '<span class="badge b-red">⚠ Low Stock</span>' : '<span class="badge b-green">✓ OK</span>'}</td>`,
-      5, 'No inventory — log a purchase first'
-    );
+    const canEdit = canAccess('feed', 'edit');
+
+    tbody('inventory-tbody', inv.inventory, i => {
+      const stock    = +i.current_stock_kg || 0;
+      const minStock = +i.minimum_stock_kg || 0;
+      const pct      = minStock > 0 ? Math.min(100, Math.round((stock / minStock) * 100)) : 100;
+      const isLow    = i.low_stock_alert;
+      const isCrit   = stock === 0;
+      const barColor = isCrit ? '#ef4444' : isLow ? '#f97316' : '#22c55e';
+      return `
+        <td><strong>${i.feed_type.replace(/_/g,' ')}</strong>${i.brand ? `<br><small style="color:var(--gray-400)">${i.brand}</small>` : ''}</td>
+        <td>
+          <span style="font-size:15px;font-weight:700;color:${isCrit?'#ef4444':isLow?'#f97316':'inherit'}">${stock.toLocaleString()} kg</span>
+          <div class="stock-bar-wrap">
+            <div class="stock-bar" style="width:${pct}%;background:${barColor}"></div>
+          </div>
+        </td>
+        <td>
+          <span class="stock-limit-val">${minStock.toLocaleString()} kg</span>
+          ${canEdit ? `<button class="btn btn-outline btn-xs" style="margin-left:6px" onclick="openSetLimit('${i.id}','${i.feed_type}',${minStock},${i.unit_cost_per_kg||0},'${i.brand||''}','${i.supplier||''}')">✏ Edit</button>` : ''}
+        </td>
+        <td>${i.unit_cost_per_kg ? 'GHS '+fmt(i.unit_cost_per_kg)+'/kg' : '—'}</td>
+        <td>${i.supplier||'—'}</td>
+        <td>
+          ${isCrit
+            ? '<span class="badge b-red">🚨 Out of Stock</span>'
+            : isLow
+              ? '<span class="badge b-orange">⚠ Low Stock</span>'
+              : '<span class="badge b-green">✓ OK</span>'}
+        </td>`;
+    }, 6, 'No inventory — log a purchase first');
+
     tbody('feed-tx-tbody', txs.transactions, t =>
       `<td>${fmtDate(t.transaction_date)}</td>
        <td><span class="badge ${t.transaction_type==='purchase'?'b-green':'b-orange'}">${t.transaction_type}</span></td>
        <td>${t.feed_type.replace(/_/g,' ')}</td>
-       <td>${t.quantity_kg} kg</td>
-       <td>${t.total_cost ? 'GHS '+fmt(t.total_cost) : '—'}</td>`,
-      5
+       <td>${(+t.quantity_kg||0).toLocaleString()} kg</td>
+       <td>${t.total_cost ? 'GHS '+fmt(t.total_cost) : '—'}</td>
+       <td>${t.supplier||'—'}</td>`,
+      6
     );
   } catch (e) { toast(e.message, 'error'); }
+}
+
+function openSetLimit(id, feedType, currentMin, unitCost, brand, supplier) {
+  el('limit-inv-id').value        = id;
+  el('limit-feed-type').textContent = feedType.replace(/_/g,' ');
+  el('limit-min-stock').value     = currentMin || '';
+  el('limit-unit-cost').value     = unitCost   || '';
+  el('limit-brand').value         = brand      || '';
+  el('limit-supplier').value      = supplier   || '';
+  showModal('modal-stock-limit');
+}
+
+async function saveStockLimit(e) {
+  e.preventDefault();
+  const id       = el('limit-inv-id').value;
+  const minStock = el('limit-min-stock').value;
+  const unitCost = el('limit-unit-cost').value;
+  const brand    = el('limit-brand').value;
+  const supplier = el('limit-supplier').value;
+  try {
+    await api('PATCH', `/feed/inventory/${id}`, {
+      minimum_stock_kg: +minStock,
+      unit_cost_per_kg: unitCost ? +unitCost : null,
+      brand:    brand    || null,
+      supplier: supplier || null,
+    });
+    hideModal('modal-stock-limit');
+    toast('Order limit updated!');
+    loadFeed();
+  } catch (err) { toast(err.message, 'error'); }
 }
 
 function calcFeedKg() {
@@ -915,26 +1085,140 @@ async function rejectTx(id) {
 }
 
 // ── Reports ───────────────────────────────────────────────────
+function switchReportTab(tab) {
+  document.querySelectorAll('.rpt-tab').forEach((btn, i) => {
+    const tabs = ['financial','transactions','eggs','flock','health','feed'];
+    btn.classList.toggle('active', tabs[i] === tab);
+  });
+  ['financial','transactions','eggs','flock','health','feed'].forEach(t => {
+    const panel = el('rpt-tab-' + t);
+    if (panel) panel.classList.toggle('hidden', t !== tab);
+  });
+}
+
 async function loadReports() {
-  const year = new Date().getFullYear();
-  el('report-year').textContent = year;
+  // Year filter
+  const yearSel = el('rpt-year');
+  if (yearSel && !yearSel.options.length) {
+    const cur = new Date().getFullYear();
+    for (let y = cur; y >= cur - 4; y--) {
+      const o = document.createElement('option'); o.value = y; o.textContent = y;
+      yearSel.appendChild(o);
+    }
+  }
+  const year  = yearSel?.value || new Date().getFullYear();
+  const month = el('rpt-month')?.value || '';
+  const qs    = `year=${year}${month ? '&month=' + month : ''}`;
+  const dateFrom = month ? `${year}-${String(month).padStart(2,'0')}-01` : `${year}-01-01`;
+  const dateTo   = month
+    ? `${year}-${String(month).padStart(2,'0')}-${new Date(year, month, 0).getDate()}`
+    : `${year}-12-31`;
+
   try {
-    const [pl, prod] = await Promise.all([
-      api('GET', `/reports/profit-loss?year=${year}`),
-      api('GET', `/reports/production-summary?year=${year}`),
+    const [pl, prod, txData, eggsData, flockData, healthData, feedData] = await Promise.all([
+      api('GET', `/reports/profit-loss?${qs}`),
+      api('GET', `/reports/production-summary?${qs}`),
+      api('GET', `/transactions/export?date_from=${dateFrom}&date_to=${dateTo}`),
+      api('GET', `/eggs?date_from=${dateFrom}&date_to=${dateTo}`),
+      api('GET', `/flock/batches`),
+      api('GET', `/health`),
+      api('GET', `/feed/transactions`),
     ]);
-    captureReportSnapshot(pl, prod);
+
+    _reportSnapshot = { pl, prod, txData, eggsData, flockData, healthData, feedData, year, month };
+
+    // ── Summary stats ──
     el('pl-income').textContent   = 'GHS ' + fmt(pl.totals.income);
     el('pl-expenses').textContent = 'GHS ' + fmt(pl.totals.expenses);
     el('pl-profit').textContent   = 'GHS ' + fmt(pl.totals.net_profit);
     el('pl-margin').textContent   = pl.totals.margin + '%';
-    tbody('pl-income-tbody',  pl.income,   r => `<td>${r.category.replace(/_/g,' ')}</td><td><strong>GHS ${fmt(r.total)}</strong></td>`, 2, 'No income recorded yet');
-    tbody('pl-expense-tbody', pl.expenses, r => `<td>${r.category.replace(/_/g,' ')}</td><td><strong>GHS ${fmt(r.total)}</strong></td>`, 2, 'No expenses recorded yet');
+
+    // ── Financial tab ──
+    tbody('pl-income-tbody', pl.income, r =>
+      `<td>${r.category.replace(/_/g,' ')}</td><td style="color:var(--gray-400)">${r.count}</td><td><strong>GHS ${fmt(r.total)}</strong></td>`, 3, 'No income recorded');
+    tbody('pl-expense-tbody', pl.expenses, r =>
+      `<td>${r.category.replace(/_/g,' ')}</td><td style="color:var(--gray-400)">${r.count}</td><td><strong>GHS ${fmt(r.total)}</strong></td>`, 3, 'No expenses recorded');
     tbody('prod-tbody', prod.production, r =>
-      `<td>${fmtDate(r.week)}</td><td>${r.total_eggs}</td><td>${r.saleable_eggs}</td>
-       <td>${r.avg_laying_rate ? (+r.avg_laying_rate).toFixed(1)+'%' : '—'}</td>`,
-      4, 'No production data yet'
-    );
+      `<td>${fmtDate(r.week)}</td><td>${(+r.total_eggs||0).toLocaleString()}</td><td>${(+r.saleable_eggs||0).toLocaleString()}</td>
+       <td>${r.avg_laying_rate ? (+r.avg_laying_rate).toFixed(1)+'%' : '—'}</td>`, 4, 'No production data');
+
+    // ── Transactions tab ──
+    const txs = txData.transactions || [];
+    const sColor = { approved:'b-green', pending:'b-yellow', rejected:'b-red', flagged:'b-orange' };
+    const tColor = { income:'b-green', expense:'b-red' };
+    if (el('rpt-tx-count')) el('rpt-tx-count').textContent = `${txs.length} records`;
+    tbody('rpt-tx-tbody', txs, r =>
+      `<td>${fmtDate(r.transaction_date)}</td>
+       <td><span class="code">${r.transaction_ref||'—'}</span></td>
+       <td><span class="badge ${tColor[r.type]||'b-gray'}">${r.type}</span></td>
+       <td>${(r.category||'').replace(/_/g,' ')}</td>
+       <td style="max-width:200px">${r.description||'—'}</td>
+       <td>${r.counterparty_name||'—'}</td>
+       <td>${r.payment_method||'—'}</td>
+       <td style="font-weight:700;color:${r.type==='income'?'#15803d':'#b91c1c'}">GHS ${fmt(r.amount)}</td>
+       <td><span class="badge ${sColor[r.approval_status]||'b-gray'}">${r.approval_status||'—'}</span></td>`,
+      9, 'No transactions in this period');
+
+    // ── Eggs tab ──
+    const eggs = eggsData.records || [];
+    const etColors = { jumbo:'b-purple', extra_large:'b-blue', large:'b-cyan', medium:'b-green', pullet:'b-yellow' };
+    const etLabels = { jumbo:'Jumbo', extra_large:'Extra Large', large:'Large', medium:'Medium', pullet:'Pullet' };
+    if (el('rpt-eggs-count')) el('rpt-eggs-count').textContent = `${eggs.length} records`;
+    tbody('rpt-eggs-tbody', eggs, r =>
+      `<td>${fmtDate(r.record_date)}</td>
+       <td><strong>${r.batch_code||'—'}</strong></td>
+       <td>${r.egg_type ? `<span class="badge ${etColors[r.egg_type]||'b-gray'}">${etLabels[r.egg_type]||r.egg_type}</span>` : '—'}</td>
+       <td>${(+r.eggs_collected||0).toLocaleString()}</td>
+       <td>${+r.broken_eggs||0}</td>
+       <td>${(+r.saleable_eggs||0).toLocaleString()}</td>
+       <td>${r.laying_rate ? `<span class="badge ${+r.laying_rate>=70?'b-green':+r.laying_rate>=50?'b-yellow':'b-red'}">${(+r.laying_rate).toFixed(1)}%</span>` : '—'}</td>`,
+      7, 'No egg records in this period');
+
+    // ── Flock tab ──
+    const batches = flockData.batches || [];
+    const pColor  = { layers:'b-green', broilers:'b-orange', breeders:'b-purple', dual_purpose:'b-cyan' };
+    const stColor = { brooding:'b-blue', growing:'b-cyan', laying:'b-green', peak_lay:'b-green', declining:'b-yellow', sold:'b-gray', culled:'b-gray' };
+    tbody('rpt-flock-tbody', batches, b =>
+      `<td><span class="code">${b.batch_code}</span></td>
+       <td>${b.breed||'—'}</td>
+       <td><span class="badge ${pColor[b.purpose]||'b-gray'}">${(b.purpose||'').replace(/_/g,' ')}</span></td>
+       <td><span class="badge ${stColor[b.status]||'b-gray'}">${b.status||'—'}</span></td>
+       <td><strong>${(+b.current_count||0).toLocaleString()}</strong></td>
+       <td>${b.age_weeks != null ? Math.round(b.age_weeks)+' wks' : '—'}</td>
+       <td>${b.pen_name||'—'}</td>
+       <td>${fmtDate(b.doc_date)}</td>`,
+      8, 'No batches found');
+
+    // ── Health tab ──
+    const health = healthData.records || [];
+    const sevColor = { low:'b-green', medium:'b-yellow', high:'b-orange', critical:'b-red' };
+    const staColor = { completed:'b-green', ongoing:'b-orange', monitoring:'b-blue' };
+    if (el('rpt-health-count')) el('rpt-health-count').textContent = `${health.length} records`;
+    tbody('rpt-health-tbody', health, r =>
+      `<td>${fmtDate(r.event_date)}</td>
+       <td>${r.batch_code||'—'}</td>
+       <td>${(r.event_type||'').replace(/_/g,' ')}</td>
+       <td>${r.diagnosis||'—'}</td>
+       <td><span class="badge ${sevColor[r.severity]||'b-gray'}">${r.severity||'—'}</span></td>
+       <td>${r.affected_count||'—'}</td>
+       <td>${r.mortality_count||0}</td>
+       <td><span class="badge ${staColor[r.status]||'b-gray'}">${r.status||'—'}</span></td>
+       <td>${r.veterinarian_name||'—'}</td>`,
+      9, 'No health records');
+
+    // ── Feed tab ──
+    const feed = feedData.transactions || [];
+    if (el('rpt-feed-count')) el('rpt-feed-count').textContent = `${feed.length} records`;
+    tbody('rpt-feed-tbody', feed, r =>
+      `<td>${fmtDate(r.transaction_date)}</td>
+       <td>${r.feed_type||'—'}</td>
+       <td><span class="badge ${r.transaction_type==='purchase'?'b-blue':r.transaction_type==='usage'?'b-orange':'b-gray'}">${r.transaction_type||'—'}</span></td>
+       <td>${(+r.quantity_kg||0).toLocaleString()} kg</td>
+       <td>${r.cost ? 'GHS '+fmt(r.cost) : '—'}</td>
+       <td>${r.batch_code||'—'}</td>
+       <td>${r.recorded_by_name||'—'}</td>`,
+      7, 'No feed transactions');
+
   } catch (e) { toast(e.message, 'error'); }
 }
 
@@ -1326,38 +1610,48 @@ async function saveAgeUpdate(form) {
 }
 
 // ── Report Export ─────────────────────────────────────────────
-// Snapshot the last loaded report data so exports work offline
 let _reportSnapshot = null;
 
-function captureReportSnapshot(pl, prod) { _reportSnapshot = { pl, prod }; }
+function _pdfSectionHeader(doc, title, y, color) {
+  if (y > 255) { doc.addPage(); y = 20; }
+  doc.setFillColor(...color);
+  doc.rect(0, y - 6, 210, 10, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+  doc.text(title, 14, y);
+  doc.setTextColor(0, 0, 0);
+  return y + 4;
+}
 
 async function exportPDF() {
-  if (!window.jspdf) { toast('PDF library not loaded yet — try again in a moment', 'error'); return; }
+  if (!window.jspdf) { toast('PDF library not loaded — try again in a moment', 'error'); return; }
   const snap = _reportSnapshot;
   if (!snap) { toast('Load the Reports page first', 'error'); return; }
 
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const year = new Date().getFullYear();
-  const org  = currentUser?.org_id ? '' : '';
+  const doc  = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const { year, month } = snap;
+  const period = month ? `${year}-${String(month).padStart(2,'0')}` : String(year);
+  const genDate = new Date().toLocaleDateString('en-GH', { dateStyle: 'long' });
 
-  // Header
-  doc.setFillColor(15, 23, 42);
-  doc.rect(0, 0, 210, 28, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(18); doc.setFont('helvetica', 'bold');
-  doc.text('FarmIQ — Financial Report', 14, 12);
-  doc.setFontSize(10); doc.setFont('helvetica', 'normal');
-  doc.text(`Year: ${year}   Generated: ${new Date().toLocaleDateString()}`, 14, 22);
+  const addHeader = (doc) => {
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, 297, 18, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+    doc.text('FarmIQ — Comprehensive Farm Report', 14, 11);
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+    doc.text(`Period: ${period}   |   Generated: ${genDate}`, 190, 11, { align: 'right' });
+    doc.setTextColor(0, 0, 0);
+  };
 
-  // P&L Summary
-  doc.setTextColor(0, 0, 0);
-  doc.setFontSize(13); doc.setFont('helvetica', 'bold');
-  doc.text('Profit & Loss Summary', 14, 38);
+  addHeader(doc);
 
+  // ── 1. P&L Summary ──────────────────────────────────────────
   const totals = snap.pl.totals || {};
+  let y = _pdfSectionHeader(doc, '1. Profit & Loss Summary', 28, [22, 163, 74]);
   doc.autoTable({
-    startY: 42,
+    startY: y,
     head: [['Metric', 'Amount (GHS)']],
     body: [
       ['Total Income',   'GHS ' + fmt(totals.income)],
@@ -1368,95 +1662,249 @@ async function exportPDF() {
     theme: 'striped',
     headStyles: { fillColor: [22, 163, 74] },
     columnStyles: { 1: { halign: 'right' } },
+    margin: { left: 14, right: 14 },
+    tableWidth: 120,
   });
 
-  // Income Breakdown
-  let y = doc.lastAutoTable.finalY + 10;
-  doc.setFontSize(12); doc.setFont('helvetica', 'bold');
-  doc.text('Income Breakdown', 14, y);
+  // ── 2. Income Breakdown ──────────────────────────────────────
+  y = doc.lastAutoTable.finalY + 10;
+  y = _pdfSectionHeader(doc, '2. Income Breakdown', y, [22, 163, 74]);
   doc.autoTable({
-    startY: y + 4,
-    head: [['Category', 'Amount (GHS)']],
-    body: (snap.pl.income || []).map(r => [r.category.replace(/_/g,' '), 'GHS ' + fmt(r.total)]),
+    startY: y,
+    head: [['Category', 'Transactions', 'Amount (GHS)']],
+    body: (snap.pl.income || []).map(r => [r.category.replace(/_/g,' '), r.count, 'GHS ' + fmt(r.total)]),
     theme: 'striped',
     headStyles: { fillColor: [22, 163, 74] },
-    columnStyles: { 1: { halign: 'right' } },
+    columnStyles: { 1: { halign: 'center' }, 2: { halign: 'right' } },
+    margin: { left: 14, right: 14 },
+    tableWidth: 160,
   });
 
-  // Expense Breakdown
+  // ── 3. Expense Breakdown ─────────────────────────────────────
   y = doc.lastAutoTable.finalY + 10;
-  doc.setFontSize(12); doc.setFont('helvetica', 'bold');
-  doc.text('Expense Breakdown', 14, y);
+  y = _pdfSectionHeader(doc, '3. Expense Breakdown', y, [220, 38, 38]);
   doc.autoTable({
-    startY: y + 4,
-    head: [['Category', 'Amount (GHS)']],
-    body: (snap.pl.expenses || []).map(r => [r.category.replace(/_/g,' '), 'GHS ' + fmt(r.total)]),
+    startY: y,
+    head: [['Category', 'Transactions', 'Amount (GHS)']],
+    body: (snap.pl.expenses || []).map(r => [r.category.replace(/_/g,' '), r.count, 'GHS ' + fmt(r.total)]),
     theme: 'striped',
     headStyles: { fillColor: [220, 38, 38] },
-    columnStyles: { 1: { halign: 'right' } },
+    columnStyles: { 1: { halign: 'center' }, 2: { halign: 'right' } },
+    margin: { left: 14, right: 14 },
+    tableWidth: 160,
   });
 
-  // Production Summary
-  y = doc.lastAutoTable.finalY + 10;
-  if (y > 240) { doc.addPage(); y = 20; }
-  doc.setFontSize(12); doc.setFont('helvetica', 'bold');
-  doc.text('Weekly Egg Production', 14, y);
+  // ── 4. All Transactions ──────────────────────────────────────
+  doc.addPage(); addHeader(doc);
+  y = _pdfSectionHeader(doc, '4. All Transactions', 28, [37, 99, 235]);
+  const txs = snap.txData?.transactions || [];
   doc.autoTable({
-    startY: y + 4,
-    head: [['Week', 'Total Eggs', 'Saleable', 'Avg Lay Rate']],
-    body: (snap.prod.production || []).map(r => [
-      fmtDate(r.week), r.total_eggs, r.saleable_eggs,
-      r.avg_laying_rate ? (+r.avg_laying_rate).toFixed(1) + '%' : '—',
+    startY: y,
+    head: [['Date', 'Ref', 'Type', 'Category', 'Description', 'Counterparty', 'Payment', 'Amount (GHS)', 'Status']],
+    body: txs.map(r => [
+      fmtDate(r.transaction_date), r.transaction_ref || '—', r.type,
+      (r.category||'').replace(/_/g,' '), r.description||'—', r.counterparty_name||'—',
+      r.payment_method||'—', 'GHS ' + fmt(r.amount), r.approval_status||'—',
+    ]),
+    theme: 'striped',
+    headStyles: { fillColor: [37, 99, 235], fontSize: 7 },
+    bodyStyles: { fontSize: 7 },
+    columnStyles: { 7: { halign: 'right' } },
+    margin: { left: 7, right: 7 },
+  });
+
+  // ── 5. Egg Production Records ────────────────────────────────
+  doc.addPage(); addHeader(doc);
+  y = _pdfSectionHeader(doc, '5. Egg Production Records', 28, [202, 138, 4]);
+  const eggs = snap.eggsData?.records || [];
+  doc.autoTable({
+    startY: y,
+    head: [['Date', 'Batch', 'Egg Type', 'Collected', 'Broken', 'Saleable', 'Laying Rate']],
+    body: eggs.map(r => [
+      fmtDate(r.record_date), r.batch_code||'—',
+      r.egg_type ? r.egg_type.replace(/_/g,' ') : '—',
+      +r.eggs_collected||0, +r.broken_eggs||0, +r.saleable_eggs||0,
+      r.laying_rate ? (+r.laying_rate).toFixed(1)+'%' : '—',
     ]),
     theme: 'striped',
     headStyles: { fillColor: [202, 138, 4] },
+    columnStyles: { 3:{halign:'right'}, 4:{halign:'right'}, 5:{halign:'right'}, 6:{halign:'right'} },
+    margin: { left: 14, right: 14 },
   });
 
-  doc.save(`FarmIQ-Report-${year}.pdf`);
+  // ── 6. Weekly Production Summary ─────────────────────────────
+  y = doc.lastAutoTable.finalY + 10;
+  y = _pdfSectionHeader(doc, '6. Weekly Production Summary', y, [202, 138, 4]);
+  doc.autoTable({
+    startY: y,
+    head: [['Week', 'Total Eggs', 'Saleable', 'Avg Laying Rate']],
+    body: (snap.prod.production || []).map(r => [
+      fmtDate(r.week), +r.total_eggs, +r.saleable_eggs,
+      r.avg_laying_rate ? (+r.avg_laying_rate).toFixed(1)+'%' : '—',
+    ]),
+    theme: 'striped',
+    headStyles: { fillColor: [202, 138, 4] },
+    columnStyles: { 1:{halign:'right'}, 2:{halign:'right'}, 3:{halign:'right'} },
+    margin: { left: 14, right: 14 },
+    tableWidth: 160,
+  });
+
+  // ── 7. Flock Status ──────────────────────────────────────────
+  doc.addPage(); addHeader(doc);
+  y = _pdfSectionHeader(doc, '7. Flock / Batch Status', 28, [124, 58, 237]);
+  const batches = snap.flockData?.batches || [];
+  doc.autoTable({
+    startY: y,
+    head: [['Batch Code', 'Breed', 'Purpose', 'Status', 'Current Count', 'Age (Wks)', 'Pen', 'DOC Date']],
+    body: batches.map(b => [
+      b.batch_code, b.breed||'—', (b.purpose||'').replace(/_/g,' '), b.status||'—',
+      (+b.current_count||0).toLocaleString(),
+      b.age_weeks != null ? Math.round(b.age_weeks) : '—',
+      b.pen_name||'—', fmtDate(b.doc_date),
+    ]),
+    theme: 'striped',
+    headStyles: { fillColor: [124, 58, 237] },
+    columnStyles: { 4:{halign:'right'}, 5:{halign:'center'} },
+    margin: { left: 14, right: 14 },
+  });
+
+  // ── 8. Health Records ────────────────────────────────────────
+  y = doc.lastAutoTable.finalY + 10;
+  y = _pdfSectionHeader(doc, '8. Health Records', y, [239, 68, 68]);
+  const health = snap.healthData?.records || [];
+  doc.autoTable({
+    startY: y,
+    head: [['Date', 'Batch', 'Event Type', 'Diagnosis', 'Severity', 'Affected', 'Mortality', 'Status', 'Veterinarian']],
+    body: health.map(r => [
+      fmtDate(r.event_date), r.batch_code||'—', (r.event_type||'').replace(/_/g,' '),
+      r.diagnosis||'—', r.severity||'—', r.affected_count||'—', r.mortality_count||0,
+      r.status||'—', r.veterinarian_name||'—',
+    ]),
+    theme: 'striped',
+    headStyles: { fillColor: [239, 68, 68], fontSize: 7 },
+    bodyStyles: { fontSize: 7 },
+    margin: { left: 7, right: 7 },
+  });
+
+  // ── 9. Feed Transactions ─────────────────────────────────────
+  doc.addPage(); addHeader(doc);
+  y = _pdfSectionHeader(doc, '9. Feed Transactions', 28, [16, 185, 129]);
+  const feed = snap.feedData?.transactions || [];
+  doc.autoTable({
+    startY: y,
+    head: [['Date', 'Feed Type', 'Transaction', 'Quantity (kg)', 'Cost (GHS)', 'Batch', 'Recorded By']],
+    body: feed.map(r => [
+      fmtDate(r.transaction_date), r.feed_type||'—', r.transaction_type||'—',
+      (+r.quantity_kg||0).toLocaleString(), r.cost ? fmt(r.cost) : '—',
+      r.batch_code||'—', r.recorded_by_name||'—',
+    ]),
+    theme: 'striped',
+    headStyles: { fillColor: [16, 185, 129] },
+    columnStyles: { 3:{halign:'right'}, 4:{halign:'right'} },
+    margin: { left: 14, right: 14 },
+  });
+
+  doc.save(`FarmIQ-Report-${period}.pdf`);
   toast('PDF downloaded!');
 }
 
 async function exportExcel() {
-  if (!window.XLSX) { toast('Excel library not loaded yet — try again in a moment', 'error'); return; }
+  if (!window.XLSX) { toast('Excel library not loaded — try again in a moment', 'error'); return; }
   const snap = _reportSnapshot;
   if (!snap) { toast('Load the Reports page first', 'error'); return; }
-  const year = new Date().getFullYear();
   const XLSX = window.XLSX;
+  const { year, month } = snap;
+  const period = month ? `${year}-${String(month).padStart(2,'0')}` : String(year);
 
   const wb = XLSX.utils.book_new();
+  const addSheet = (name, rows) => XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), name);
 
   // Sheet 1: P&L Summary
   const totals = snap.pl.totals || {};
-  const summary = [
-    ['FarmIQ Financial Report', year],
+  addSheet('PL Summary', [
+    [`FarmIQ Farm Report — ${period}`],
+    [`Generated: ${new Date().toLocaleDateString('en-GH', { dateStyle: 'long' })}`],
     [],
     ['Metric', 'Amount (GHS)'],
     ['Total Income',   +totals.income   || 0],
     ['Total Expenses', +totals.expenses || 0],
     ['Net Profit',     +totals.net_profit || 0],
     ['Profit Margin',  (totals.margin || 0) + '%'],
-  ];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), 'PL Summary');
+  ]);
 
-  // Sheet 2: Income
-  const incomeRows = [['Category', 'Amount (GHS)'],
-    ...(snap.pl.income || []).map(r => [r.category.replace(/_/g,' '), +r.total])];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(incomeRows), 'Income');
+  // Sheet 2: Income Breakdown
+  addSheet('Income', [
+    ['Category', 'Transactions', 'Amount (GHS)'],
+    ...(snap.pl.income || []).map(r => [r.category.replace(/_/g,' '), +r.count, +r.total]),
+  ]);
 
-  // Sheet 3: Expenses
-  const expRows = [['Category', 'Amount (GHS)'],
-    ...(snap.pl.expenses || []).map(r => [r.category.replace(/_/g,' '), +r.total])];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(expRows), 'Expenses');
+  // Sheet 3: Expense Breakdown
+  addSheet('Expenses', [
+    ['Category', 'Transactions', 'Amount (GHS)'],
+    ...(snap.pl.expenses || []).map(r => [r.category.replace(/_/g,' '), +r.count, +r.total]),
+  ]);
 
-  // Sheet 4: Egg Production
-  const prodRows = [['Week', 'Total Eggs', 'Saleable Eggs', 'Avg Laying Rate (%)'],
+  // Sheet 4: All Transactions
+  addSheet('Transactions', [
+    ['Date', 'Ref', 'Type', 'Category', 'Description', 'Counterparty', 'Payment Method', 'Amount (GHS)', 'Status'],
+    ...(snap.txData?.transactions || []).map(r => [
+      fmtDate(r.transaction_date), r.transaction_ref||'', r.type,
+      (r.category||'').replace(/_/g,' '), r.description||'', r.counterparty_name||'',
+      r.payment_method||'', +r.amount, r.approval_status||'',
+    ]),
+  ]);
+
+  // Sheet 5: Egg Production Records
+  addSheet('Egg Records', [
+    ['Date', 'Batch Code', 'Egg Type', 'Eggs Collected', 'Broken', 'Saleable', 'Laying Rate (%)'],
+    ...(snap.eggsData?.records || []).map(r => [
+      fmtDate(r.record_date), r.batch_code||'', (r.egg_type||'').replace(/_/g,' '),
+      +r.eggs_collected||0, +r.broken_eggs||0, +r.saleable_eggs||0,
+      r.laying_rate ? (+r.laying_rate).toFixed(1) : '',
+    ]),
+  ]);
+
+  // Sheet 6: Weekly Production Summary
+  addSheet('Weekly Production', [
+    ['Week', 'Total Eggs', 'Saleable Eggs', 'Avg Laying Rate (%)'],
     ...(snap.prod.production || []).map(r => [
       fmtDate(r.week), +r.total_eggs, +r.saleable_eggs,
       r.avg_laying_rate ? (+r.avg_laying_rate).toFixed(1) : '',
-    ])];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(prodRows), 'Egg Production');
+    ]),
+  ]);
 
-  XLSX.writeFile(wb, `FarmIQ-Report-${year}.xlsx`);
+  // Sheet 7: Flock Status
+  addSheet('Flock Status', [
+    ['Batch Code', 'Breed', 'Purpose', 'Status', 'Current Count', 'Age (Weeks)', 'Pen', 'DOC Date'],
+    ...(snap.flockData?.batches || []).map(b => [
+      b.batch_code, b.breed||'', (b.purpose||'').replace(/_/g,' '), b.status||'',
+      +b.current_count||0,
+      b.age_weeks != null ? Math.round(b.age_weeks) : '',
+      b.pen_name||'', fmtDate(b.doc_date),
+    ]),
+  ]);
+
+  // Sheet 8: Health Records
+  addSheet('Health Records', [
+    ['Date', 'Batch', 'Event Type', 'Diagnosis', 'Severity', 'Affected', 'Mortality', 'Status', 'Veterinarian'],
+    ...(snap.healthData?.records || []).map(r => [
+      fmtDate(r.event_date), r.batch_code||'', (r.event_type||'').replace(/_/g,' '),
+      r.diagnosis||'', r.severity||'', r.affected_count||'', r.mortality_count||0,
+      r.status||'', r.veterinarian_name||'',
+    ]),
+  ]);
+
+  // Sheet 9: Feed Transactions
+  addSheet('Feed Transactions', [
+    ['Date', 'Feed Type', 'Transaction Type', 'Quantity (kg)', 'Cost (GHS)', 'Batch', 'Recorded By'],
+    ...(snap.feedData?.transactions || []).map(r => [
+      fmtDate(r.transaction_date), r.feed_type||'', r.transaction_type||'',
+      +r.quantity_kg||0, r.cost ? +r.cost : '',
+      r.batch_code||'', r.recorded_by_name||'',
+    ]),
+  ]);
+
+  XLSX.writeFile(wb, `FarmIQ-Report-${period}.xlsx`);
   toast('Excel downloaded!');
 }
 
@@ -1549,6 +1997,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Auto-suggest batch code when modal opens
   document.querySelector('[onclick="showModal(\'modal-batch\')"]')
     ?.addEventListener('click', () => setTimeout(suggestBatchCode, 50));
+
+  // Mortality modal: batch change + set today's date
+  el('mort-batch-sel')?.addEventListener('change', onMortBatchChange);
+  const mortDate = el('mort-date');
+  if (mortDate) mortDate.value = new Date().toISOString().split('T')[0];
 
   // Forms
   const formMap = {
