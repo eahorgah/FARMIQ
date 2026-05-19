@@ -5,3 +5,5 @@ npm-debug.log*
 dist/
 build/
 .DS_Store
+local_dump.sql
+scripts/supabase_import.sql
