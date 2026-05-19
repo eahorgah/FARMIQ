@@ -1179,25 +1179,6 @@
 
                 <div class="settings-field">
                   <div class="settings-field-label">
-                    <strong>Auto-Approve Roles</strong>
-                    <span class="settings-field-hint">Users with these roles bypass the threshold and their transactions are approved instantly, regardless of amount.</span>
-                  </div>
-                  <div class="settings-field-control">
-                    <div class="role-checks" id="auto-approve-roles">
-                      <label class="role-check-item"><input type="checkbox" name="auto_approve_roles" value="super_admin" disabled checked/> <span>super_admin <span class="badge b-gray" style="font-size:10px">always auto-approved</span></span></label>
-                      <label class="role-check-item"><input type="checkbox" name="auto_approve_roles" value="farm_owner"/> <span>farm_owner</span></label>
-                      <label class="role-check-item"><input type="checkbox" name="auto_approve_roles" value="farm_manager"/> <span>farm_manager</span></label>
-                      <label class="role-check-item"><input type="checkbox" name="auto_approve_roles" value="finance_officer"/> <span>finance_officer</span></label>
-                      <label class="role-check-item"><input type="checkbox" name="auto_approve_roles" value="veterinarian"/> <span>veterinarian</span></label>
-                      <label class="role-check-item"><input type="checkbox" name="auto_approve_roles" value="data_entry"/> <span>data_entry</span></label>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="settings-divider"></div>
-
-                <div class="settings-field">
-                  <div class="settings-field-label">
                     <strong>Fiscal Year Start</strong>
                     <span class="settings-field-hint">The month your financial year begins. Affects P&amp;L and report groupings.</span>
                   </div>
@@ -1253,8 +1234,8 @@
                 <div class="settings-rule-item">
                   <span class="settings-rule-icon">✅</span>
                   <div>
-                    <div class="settings-rule-title">Auto-Approved Roles</div>
-                    <div class="settings-rule-val" id="sum-roles">Loading…</div>
+                    <div class="settings-rule-title">Approval Mode</div>
+                    <div class="settings-rule-val" style="color:#dc2626">Manual — all transactions require approval</div>
                   </div>
                 </div>
                 <div class="settings-rule-item">

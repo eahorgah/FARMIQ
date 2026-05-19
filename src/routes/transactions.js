@@ -8,17 +8,6 @@ const { body, query, validationResult } = require('express-validator');
 router.use(authenticate);
 
 // ── Helpers ────────────────────────────────────────────────
-async function needsApproval(orgId, amount) {
-  const { rows } = await pool.query(
-    `SELECT approval_threshold, auto_approve_roles FROM finance_settings WHERE org_id = $1`,
-    [orgId]
-  );
-  return rows[0] ? amount > rows[0].approval_threshold : amount > 500;
-}
-
-function canAutoApprove(role, autoRoles) {
-  return (autoRoles || ['farm_owner']).includes(role);
-}
 
 // GET /api/transactions — list with filters + pagination
 // Allows transactions.view (all) OR expenditure.view (expense-only)
@@ -172,9 +161,7 @@ router.post('/',
       sale_quantity, sale_unit, sale_unit_price, sale_batch_id,
     } = req.body;
 
-    const requires    = await needsApproval(req.user.org_id, amount);
-    const autoApprove = !requires || canAutoApprove(req.user.role, null);
-    const approvalStatus = autoApprove ? 'approved' : 'pending';
+    const approvalStatus = 'pending';
 
     const client = await pool.connect();
     try {
@@ -191,9 +178,8 @@ router.post('/',
           req.user.org_id, type, category, amount, transaction_date, description, payment_method,
           batch_id || sale_batch_id || null, pen_id || null,
           counterparty_name || null, counterparty_phone || null, invoice_number || null,
-          requires, approvalStatus,
-          autoApprove ? req.user.id : null,
-          autoApprove ? new Date() : null,
+          true, approvalStatus,
+          null, null,
           req.user.id,
         ]
       );
@@ -230,9 +216,7 @@ router.post('/',
       await client.query('COMMIT');
       res.status(201).json({
         transaction: tx,
-        message: autoApprove
-          ? 'Transaction recorded and auto-approved'
-          : 'Transaction submitted — pending approval from finance officer or farm owner',
+        message: 'Transaction submitted — pending approval from farm owner or finance officer',
       });
     } catch (err) {
       await client.query('ROLLBACK'); throw err;
