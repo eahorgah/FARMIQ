@@ -63,4 +63,50 @@ router.put('/finance', requireRole('super_admin', 'farm_owner'), async (req, res
   res.json({ settings: setting, message: 'Finance settings saved' });
 });
 
+// GET /api/settings/org
+router.get('/org', async (req, res) => {
+  const { rows: [org] } = await pool.query(
+    `SELECT name, slug, address, region, country, phone, email, currency, logo_url
+     FROM organizations WHERE id = $1`,
+    [req.user.org_id]
+  );
+  if (!org) return res.status(404).json({ error: 'Organization not found' });
+  res.json({ org });
+});
+
+// PUT /api/settings/org
+router.put('/org', requireRole('super_admin', 'farm_owner'), async (req, res) => {
+  const { name, address, region, country, phone, email, currency, logo_url } = req.body;
+
+  if (name !== undefined && !String(name).trim())
+    return res.status(422).json({ error: 'Farm name cannot be empty' });
+
+  const { rows: [org] } = await pool.query(
+    `UPDATE organizations SET
+       name       = COALESCE(NULLIF($2,''), name),
+       address    = COALESCE($3, address),
+       region     = COALESCE($4, region),
+       country    = COALESCE(NULLIF($5,''), country),
+       phone      = COALESCE($6, phone),
+       email      = COALESCE($7, email),
+       currency   = COALESCE(NULLIF($8,''), currency),
+       logo_url   = $9,
+       updated_at = NOW()
+     WHERE id = $1
+     RETURNING name, slug, address, region, country, phone, email, currency, logo_url`,
+    [
+      req.user.org_id,
+      name    || '',
+      address ?? null,
+      region  ?? null,
+      country || '',
+      phone   ?? null,
+      email   ?? null,
+      currency || '',
+      logo_url ?? null,
+    ]
+  );
+  res.json({ org, message: 'Farm profile updated' });
+});
+
 module.exports = router;

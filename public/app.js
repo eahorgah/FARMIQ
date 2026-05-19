@@ -1431,7 +1431,106 @@ function clearAuditFilters() {
 // ── Settings ──────────────────────────────────────────────────
 const MONTH_NAMES = ['','January','February','March','April','May','June','July','August','September','October','November','December'];
 
+function previewLogo(url) {
+  const wrap = el('logo-preview-wrap');
+  const img  = el('logo-preview-img');
+  if (!wrap || !img) return;
+  if (url && url.trim()) {
+    img.src = url.trim();
+    wrap.style.display = 'block';
+    updateOrgPreview();
+  } else {
+    wrap.style.display = 'none';
+    updateOrgPreview();
+  }
+}
+
+function clearLogo() {
+  const input = el('org-logo-url');
+  if (input) input.value = '';
+  previewLogo('');
+}
+
+function updateOrgPreview() {
+  const name    = el('org-name')?.value || '—';
+  const country = el('org-country')?.value || '';
+  const region  = el('org-region')?.value  || '';
+  const phone   = el('org-phone')?.value   || '';
+  const email   = el('org-email')?.value   || '';
+  const address = el('org-address')?.value || '';
+  const logoUrl = el('org-logo-url')?.value || '';
+
+  if (el('org-preview-name'))    el('org-preview-name').textContent    = name;
+  if (el('org-preview-country')) el('org-preview-country').textContent = [region, country].filter(Boolean).join(', ') || '—';
+
+  const logoWrap = el('org-preview-logo');
+  if (logoWrap) {
+    if (logoUrl.trim()) {
+      logoWrap.innerHTML = `<img src="${logoUrl.trim()}" alt="Logo"
+        style="max-height:72px;max-width:160px;border-radius:12px;object-fit:contain;border:1px solid var(--gray-200);padding:6px;background:#fff"
+        onerror="this.style.display='none'"/>`;
+    } else {
+      logoWrap.innerHTML = `<div style="width:72px;height:72px;background:linear-gradient(135deg,#16a34a,#15803d);border-radius:16px;display:inline-flex;align-items:center;justify-content:center;font-size:32px">🌱</div>`;
+    }
+  }
+
+  const details = el('org-preview-details');
+  if (details) {
+    const rows = [
+      phone   ? `📞 ${phone}`   : '',
+      email   ? `✉️ ${email}`   : '',
+      address ? `📍 ${address}` : '',
+    ].filter(Boolean);
+    details.innerHTML = rows.join('<br>') || '<span style="color:var(--gray-300)">No contact details yet</span>';
+  }
+}
+
+async function loadOrgSettings() {
+  try {
+    const { org } = await api('GET', '/settings/org');
+    if (el('org-name'))     el('org-name').value     = org.name     || '';
+    if (el('org-logo-url')) el('org-logo-url').value = org.logo_url || '';
+    if (el('org-phone'))    el('org-phone').value    = org.phone    || '';
+    if (el('org-email'))    el('org-email').value    = org.email    || '';
+    if (el('org-address'))  el('org-address').value  = org.address  || '';
+    if (el('org-region'))   el('org-region').value   = org.region   || '';
+    if (el('org-country'))  el('org-country').value  = org.country  || '';
+    if (el('org-currency')) el('org-currency').value = org.currency || 'GHS';
+    previewLogo(org.logo_url || '');
+    updateOrgPreview();
+
+    // Wire live preview updates
+    ['org-name','org-country','org-region','org-phone','org-email','org-address'].forEach(id => {
+      el(id)?.addEventListener('input', updateOrgPreview);
+    });
+  } catch (e) { /* non-blocking */ }
+}
+
+async function saveOrgSettings(e) {
+  e.preventDefault();
+  const btn = e.target.querySelector('[type=submit]');
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const body = {
+      name:     el('org-name')?.value.trim()    || undefined,
+      logo_url: el('org-logo-url')?.value.trim() || null,
+      phone:    el('org-phone')?.value.trim()   || null,
+      email:    el('org-email')?.value.trim()   || null,
+      address:  el('org-address')?.value.trim() || null,
+      region:   el('org-region')?.value.trim()  || null,
+      country:  el('org-country')?.value.trim() || undefined,
+      currency: el('org-currency')?.value       || undefined,
+    };
+    await api('PUT', '/settings/org', body);
+    toast('Farm profile updated', 'success');
+    updateOrgPreview();
+  } catch (err) { toast(err.message, 'error'); }
+  finally { btn.disabled = false; btn.textContent = orig; }
+}
+
 async function loadSettings() {
+  loadOrgSettings();
   try {
     const { settings } = await api('GET', '/settings/finance');
     const s = settings;
@@ -2067,9 +2166,22 @@ document.addEventListener('DOMContentLoaded', () => {
     finally { btn.disabled = false; btn.textContent = 'Create Farm Account →'; }
   };
 
+  // Mobile sidebar
+  function setSidebarOpen(open) {
+    el('sidebar')?.classList.toggle('sidebar-open', open);
+    el('sidebar-overlay')?.classList.toggle('open', open);
+  }
+  el('btn-hamburger')?.addEventListener('click', () =>
+    setSidebarOpen(!el('sidebar').classList.contains('sidebar-open'))
+  );
+  el('sidebar-overlay')?.addEventListener('click', () => setSidebarOpen(false));
+
   // Nav
   document.querySelectorAll('.nav-link').forEach(link => {
-    link.onclick = () => navigateTo(link.dataset.section);
+    link.onclick = () => {
+      navigateTo(link.dataset.section);
+      if (window.innerWidth <= 768) setSidebarOpen(false);
+    };
   });
 
   el('btn-logout').onclick = logout;

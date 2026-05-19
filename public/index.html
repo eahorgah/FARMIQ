@@ -49,6 +49,7 @@
 
   <header id="header">
     <div class="header-brand">
+      <button class="btn-hamburger" id="btn-hamburger" aria-label="Toggle menu">☰</button>
       <div class="header-icon">🌱</div>
       <span class="header-logo">FarmIQ</span>
     </div>
@@ -63,6 +64,7 @@
   </header>
 
   <div class="app-body">
+    <div id="sidebar-overlay"></div>
     <aside id="sidebar">
       <div class="sidebar-section">Overview</div>
       <nav>
@@ -1041,6 +1043,112 @@
       <div id="section-settings" class="section hidden">
         <div class="section-header">
           <h2 class="section-title"><span class="section-icon">⚙️</span> Settings</h2>
+        </div>
+
+        <!-- Farm Profile -->
+        <div class="settings-grid" style="margin-bottom:24px">
+          <div class="card settings-card">
+            <div class="card-header">
+              <span class="card-title">🏡 Farm Profile</span>
+              <span class="badge b-blue" style="font-size:11px">farm_owner / super_admin only</span>
+            </div>
+            <div class="card-body" style="padding:24px">
+              <form id="form-org-settings" onsubmit="saveOrgSettings(event)">
+
+                <div class="settings-field">
+                  <div class="settings-field-label">
+                    <strong>Farm / Organization Name</strong>
+                    <span class="settings-field-hint">The name displayed across the app and on reports.</span>
+                  </div>
+                  <div class="settings-field-control">
+                    <input type="text" id="org-name" name="name" placeholder="e.g. Sunrise Poultry Farm Ltd." class="form-control"/>
+                  </div>
+                </div>
+
+                <div class="settings-divider"></div>
+
+                <div class="settings-field">
+                  <div class="settings-field-label">
+                    <strong>Logo URL</strong>
+                    <span class="settings-field-hint">Paste a direct link to your logo image (PNG, JPG, SVG). Use an image hosting service like Imgur or Cloudinary.</span>
+                  </div>
+                  <div class="settings-field-control">
+                    <input type="url" id="org-logo-url" name="logo_url" placeholder="https://example.com/logo.png" class="form-control" oninput="previewLogo(this.value)"/>
+                    <div id="logo-preview-wrap" style="margin-top:12px;display:none">
+                      <img id="logo-preview-img" src="" alt="Logo preview"
+                        style="max-height:80px;max-width:200px;border-radius:8px;border:1px solid var(--gray-200);padding:6px;background:#fff;object-fit:contain"/>
+                      <button type="button" class="btn btn-outline btn-xs" style="margin-left:10px;vertical-align:middle" onclick="clearLogo()">Remove</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-divider"></div>
+
+                <div class="settings-field">
+                  <div class="settings-field-label">
+                    <strong>Contact Details</strong>
+                    <span class="settings-field-hint">Phone, email, and address for your farm.</span>
+                  </div>
+                  <div class="settings-field-control">
+                    <div class="form-row" style="margin-bottom:10px">
+                      <div class="form-group" style="margin-bottom:0"><label>Phone</label><input type="tel" id="org-phone" name="phone" placeholder="+233..." class="form-control"/></div>
+                      <div class="form-group" style="margin-bottom:0"><label>Email</label><input type="email" id="org-email" name="email" placeholder="farm@example.com" class="form-control"/></div>
+                    </div>
+                    <div class="form-group"><label>Address</label><input type="text" id="org-address" name="address" placeholder="e.g. 12 Farm Road, Kumasi" class="form-control"/></div>
+                    <div class="form-row">
+                      <div class="form-group" style="margin-bottom:0"><label>Region</label><input type="text" id="org-region" name="region" placeholder="e.g. Ashanti" class="form-control"/></div>
+                      <div class="form-group" style="margin-bottom:0"><label>Country</label><input type="text" id="org-country" name="country" placeholder="Ghana" class="form-control"/></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-divider"></div>
+
+                <div class="settings-field">
+                  <div class="settings-field-label">
+                    <strong>Currency</strong>
+                    <span class="settings-field-hint">Used in all financial displays and reports.</span>
+                  </div>
+                  <div class="settings-field-control">
+                    <select id="org-currency" name="currency" class="form-control" style="max-width:200px">
+                      <option value="GHS">GHS — Ghanaian Cedi</option>
+                      <option value="USD">USD — US Dollar</option>
+                      <option value="NGN">NGN — Nigerian Naira</option>
+                      <option value="KES">KES — Kenyan Shilling</option>
+                      <option value="ZAR">ZAR — South African Rand</option>
+                      <option value="UGX">UGX — Ugandan Shilling</option>
+                      <option value="TZS">TZS — Tanzanian Shilling</option>
+                      <option value="ETB">ETB — Ethiopian Birr</option>
+                      <option value="GBP">GBP — British Pound</option>
+                      <option value="EUR">EUR — Euro</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="settings-divider"></div>
+
+                <div style="display:flex;justify-content:flex-end;gap:10px">
+                  <button type="button" class="btn btn-outline" onclick="loadSettings()">Reset</button>
+                  <button type="submit" class="btn btn-primary">Save Profile</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Profile Preview -->
+          <div class="card settings-card">
+            <div class="card-header"><span class="card-title">👁 Profile Preview</span></div>
+            <div class="card-body" style="padding:24px">
+              <div id="org-preview" style="text-align:center;padding:20px 0">
+                <div id="org-preview-logo" style="margin-bottom:14px">
+                  <div style="width:72px;height:72px;background:linear-gradient(135deg,#16a34a,#15803d);border-radius:16px;display:inline-flex;align-items:center;justify-content:center;font-size:32px">🌱</div>
+                </div>
+                <div id="org-preview-name" style="font-size:20px;font-weight:800;color:var(--gray-900);margin-bottom:4px">—</div>
+                <div id="org-preview-country" style="font-size:13px;color:var(--gray-400);margin-bottom:16px">—</div>
+                <div id="org-preview-details" style="text-align:left;font-size:13px;color:var(--gray-600);line-height:2"></div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Finance & Approval Settings -->
