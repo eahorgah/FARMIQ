@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>FarmIQ — Poultry Management</title>
-  <link rel="stylesheet" href="/style.css?v=20260513b"/>
+  <link rel="stylesheet" href="/style.css?v=20260513d"/>
 </head>
 <body>
 
@@ -89,6 +89,7 @@
         <a class="nav-link" data-section="users"><span class="nav-icon">👥</span><span class="nav-label">Users & Access</span></a>
         <a class="nav-link" data-section="alerts"><span class="nav-icon">🔔</span><span class="nav-label">Staff Alerts <span id="alert-badge" class="alert-badge hidden">0</span></span></a>
         <a class="nav-link" data-section="audit"><span class="nav-icon">🔍</span><span class="nav-label">Audit Trail</span></a>
+        <a class="nav-link" data-section="settings" id="nav-settings"><span class="nav-icon">⚙️</span><span class="nav-label">Settings</span></a>
       </nav>
     </aside>
 
@@ -157,7 +158,7 @@
         <div class="card">
           <div class="card-header"><span class="card-title">Batches &amp; Live Count</span></div>
           <table class="table">
-            <thead><tr><th>Batch No.</th><th>Product / Breed</th><th>Purpose</th><th>Status</th><th>Birds</th><th>Age (wks)</th><th>Pen</th><th>Eggs 7d</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Batch No.</th><th>Product / Breed</th><th>Purpose</th><th>Status</th><th>Birds</th><th>Age (auto)</th><th>Pen</th><th>Eggs 7d</th><th>DOC Date</th></tr></thead>
             <tbody id="batches-tbody"></tbody>
           </table>
         </div>
@@ -1037,6 +1038,141 @@
         </div>
       </div>
 
+      <!-- ── SETTINGS ──────────────────────────────────── -->
+      <div id="section-settings" class="section hidden">
+        <div class="section-header">
+          <h2 class="section-title"><span class="section-icon">⚙️</span> Settings</h2>
+        </div>
+
+        <!-- Finance & Approval Settings -->
+        <div class="settings-grid">
+          <div class="card settings-card">
+            <div class="card-header">
+              <span class="card-title">💰 Finance &amp; Approval Settings</span>
+              <span class="badge b-blue" style="font-size:11px">farm_owner / super_admin only</span>
+            </div>
+            <div class="card-body" style="padding:24px">
+              <form id="form-finance-settings" onsubmit="saveFinanceSettings(event)">
+
+                <div class="settings-field">
+                  <div class="settings-field-label">
+                    <strong>Approval Threshold (GHS)</strong>
+                    <span class="settings-field-hint">Transactions above this amount require approval before being counted in financials. Set to 0 to require approval on all transactions.</span>
+                  </div>
+                  <div class="settings-field-control">
+                    <div class="input-prefix-wrap">
+                      <span class="input-prefix">GHS</span>
+                      <input type="number" id="setting-threshold" name="approval_threshold" min="0" step="0.01" placeholder="500.00" class="form-control"/>
+                    </div>
+                    <div id="threshold-preview" class="settings-preview"></div>
+                  </div>
+                </div>
+
+                <div class="settings-divider"></div>
+
+                <div class="settings-field">
+                  <div class="settings-field-label">
+                    <strong>Auto-Approve Roles</strong>
+                    <span class="settings-field-hint">Users with these roles bypass the threshold and their transactions are approved instantly, regardless of amount.</span>
+                  </div>
+                  <div class="settings-field-control">
+                    <div class="role-checks" id="auto-approve-roles">
+                      <label class="role-check-item"><input type="checkbox" name="auto_approve_roles" value="super_admin" disabled checked/> <span>super_admin <span class="badge b-gray" style="font-size:10px">always auto-approved</span></span></label>
+                      <label class="role-check-item"><input type="checkbox" name="auto_approve_roles" value="farm_owner"/> <span>farm_owner</span></label>
+                      <label class="role-check-item"><input type="checkbox" name="auto_approve_roles" value="farm_manager"/> <span>farm_manager</span></label>
+                      <label class="role-check-item"><input type="checkbox" name="auto_approve_roles" value="finance_officer"/> <span>finance_officer</span></label>
+                      <label class="role-check-item"><input type="checkbox" name="auto_approve_roles" value="veterinarian"/> <span>veterinarian</span></label>
+                      <label class="role-check-item"><input type="checkbox" name="auto_approve_roles" value="data_entry"/> <span>data_entry</span></label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-divider"></div>
+
+                <div class="settings-field">
+                  <div class="settings-field-label">
+                    <strong>Fiscal Year Start</strong>
+                    <span class="settings-field-hint">The month your financial year begins. Affects P&amp;L and report groupings.</span>
+                  </div>
+                  <div class="settings-field-control">
+                    <select id="setting-fiscal" name="fiscal_year_start" class="form-control" style="max-width:200px">
+                      <option value="1">January</option><option value="2">February</option>
+                      <option value="3">March</option><option value="4">April</option>
+                      <option value="5">May</option><option value="6">June</option>
+                      <option value="7">July</option><option value="8">August</option>
+                      <option value="9">September</option><option value="10">October</option>
+                      <option value="11">November</option><option value="12">December</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="settings-divider"></div>
+
+                <div class="settings-field">
+                  <div class="settings-field-label">
+                    <strong>Tax Rate (%)</strong>
+                    <span class="settings-field-hint">Applied to income calculations in financial reports. Set to 0 if not applicable.</span>
+                  </div>
+                  <div class="settings-field-control">
+                    <div class="input-prefix-wrap">
+                      <input type="number" id="setting-tax" name="tax_rate" min="0" max="100" step="0.01" placeholder="0" class="form-control" style="max-width:140px"/>
+                      <span class="input-suffix">%</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-divider"></div>
+
+                <div style="display:flex;justify-content:flex-end;gap:10px">
+                  <button type="button" class="btn btn-outline" onclick="loadSettings()">Reset</button>
+                  <button type="submit" class="btn btn-primary">Save Settings</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Current Settings Summary -->
+          <div class="card settings-card">
+            <div class="card-header"><span class="card-title">📋 Current Approval Rules</span></div>
+            <div class="card-body" style="padding:24px">
+              <div id="settings-summary">
+                <div class="settings-rule-item">
+                  <span class="settings-rule-icon">🔢</span>
+                  <div>
+                    <div class="settings-rule-title">Approval Threshold</div>
+                    <div class="settings-rule-val" id="sum-threshold">Loading…</div>
+                  </div>
+                </div>
+                <div class="settings-rule-item">
+                  <span class="settings-rule-icon">✅</span>
+                  <div>
+                    <div class="settings-rule-title">Auto-Approved Roles</div>
+                    <div class="settings-rule-val" id="sum-roles">Loading…</div>
+                  </div>
+                </div>
+                <div class="settings-rule-item">
+                  <span class="settings-rule-icon">📅</span>
+                  <div>
+                    <div class="settings-rule-title">Fiscal Year Start</div>
+                    <div class="settings-rule-val" id="sum-fiscal">Loading…</div>
+                  </div>
+                </div>
+                <div class="settings-rule-item">
+                  <span class="settings-rule-icon">🧾</span>
+                  <div>
+                    <div class="settings-rule-title">Tax Rate</div>
+                    <div class="settings-rule-val" id="sum-tax">Loading…</div>
+                  </div>
+                </div>
+                <div class="settings-rule-box" id="sum-rule-box">
+                  <span id="sum-rule-text"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </main>
   </div>
 </div>
@@ -1362,6 +1498,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="/app.js?v=20260513b"></script>
+<script src="/app.js?v=20260513d"></script>
 </body>
 </html>

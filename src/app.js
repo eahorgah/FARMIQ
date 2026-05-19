@@ -16,6 +16,7 @@ const reportRoutes = require('./routes/reports');
 const eggRoutes = require('./routes/eggs');
 const auditRoutes = require('./routes/audit');
 const alertRoutes = require('./routes/alerts');
+const settingsRoutes = require('./routes/settings');
 
 const path = require('path');
 const { errorHandler } = require('./middleware/errorHandler');
@@ -87,6 +88,7 @@ app.use('/api/reports',      reportRoutes);
 app.use('/api/eggs',         eggRoutes);
 app.use('/api/audit',        auditRoutes);
 app.use('/api/alerts',       alertRoutes);
+app.use('/api/settings',     settingsRoutes);
 
 app.get('/api/health-check', (req, res) => res.json({ status: 'ok', version: '1.0.0' }));
 

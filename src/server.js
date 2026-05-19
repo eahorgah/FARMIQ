@@ -21,9 +21,15 @@ async function runMigrations() {
   }
 }
 
-runMigrations().then(() => {
-  app.listen(PORT, () => {
-    console.log(`FarmIQ API running on http://localhost:${PORT}`);
-    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+// Only start the HTTP server when running locally (not on Vercel/serverless)
+if (process.env.VERCEL !== '1') {
+  runMigrations().then(() => {
+    app.listen(PORT, () => {
+      console.log(`FarmIQ API running on http://localhost:${PORT}`);
+      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
   });
-});
+}
+
+// Export app so Vercel can use it as a serverless handler
+module.exports = app;

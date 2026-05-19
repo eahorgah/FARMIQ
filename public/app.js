@@ -126,10 +126,12 @@ function showApp() {
     roleBadge.textContent = (currentUser?.role || '').replace(/_/g, ' ');
   }
 
-  // Gate nav links by permission — only dashboard and expenditure are explicitly controlled
+  // Gate nav links by permission
+  const isAdmin = ['super_admin','farm_owner'].includes(currentUser?.role);
   const navGates = {
     dashboard:   () => canAccess('dashboard'),
     expenditure: () => canAccess('expenditure'),
+    settings:    () => isAdmin,
   };
   document.querySelectorAll('.nav-link[data-section]').forEach(link => {
     const section = link.dataset.section;
@@ -163,7 +165,7 @@ function navigateTo(section) {
   document.querySelector(`[data-section="${section}"]`)?.classList.add('active');
   document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
   el('section-' + section)?.classList.remove('hidden');
-  const loaders = { dashboard: loadDashboard, flock: loadFlock, eggs: filterEggs, health: loadHealth, feed: loadFeed, income: loadIncome, expenditure: loadExpenditure, transactions: loadTransactions, ledger: loadLedger, reports: loadReports, users: loadUsers, alerts: loadAlerts, audit: loadAudit };
+  const loaders = { dashboard: loadDashboard, flock: loadFlock, eggs: filterEggs, health: loadHealth, feed: loadFeed, income: loadIncome, expenditure: loadExpenditure, transactions: loadTransactions, ledger: loadLedger, reports: loadReports, users: loadUsers, alerts: loadAlerts, audit: loadAudit, settings: loadSettings };
   loaders[section]?.();
 }
 
@@ -198,17 +200,16 @@ async function loadFlock() {
       const purposeColor = { layers:'b-green', broilers:'b-orange', breeders:'b-purple', dual_purpose:'b-cyan' };
       const statusColor  = { brooding:'b-blue', growing:'b-cyan', laying:'b-green', peak_lay:'b-green', declining:'b-yellow', sold:'b-gray', culled:'b-gray' };
       const ageWks = b.age_weeks != null ? Math.round(b.age_weeks) : null;
+      const ageDays = b.doc_date ? Math.floor((Date.now() - new Date(b.doc_date)) / 86400000) : null;
       return `<td><span class="code">${b.batch_code}</span></td>
               <td><strong>${b.breed}</strong></td>
               <td><span class="badge ${purposeColor[b.purpose]||'b-gray'}">${b.purpose}</span></td>
               <td><span class="badge ${statusColor[b.status]||'b-gray'}">${b.status}</span></td>
-              <td><strong>${b.current_count}</strong></td>
-              <td>${ageWks != null ? `<span class="age-badge">${ageWks} wks</span>` : '—'}</td>
+              <td><strong>${(+b.current_count||0).toLocaleString()}</strong></td>
+              <td>${ageWks != null ? `<span class="age-badge">${ageWks} wks</span><br><small style="color:var(--gray-400);font-size:10px">${ageDays} days</small>` : '—'}</td>
               <td>${b.pen_name || '—'}</td>
               <td>${b.eggs_last_7d || 0}</td>
-              <td>${canEdit
-                ? `<button class="btn btn-age btn-xs" onclick="openUpdateAge('${b.id}','${b.batch_code}','${b.doc_date}',${ageWks ?? 0})">Update Age</button>`
-                : '—'}</td>`;
+              <td style="color:var(--gray-400);font-size:12px">${b.doc_date ? fmtDate(b.doc_date) : '—'}</td>`;
     }, 9, 'No batches yet — create your first batch');
 
     tbody('pens-tbody', pd.pens, p =>
@@ -1427,6 +1428,85 @@ function clearAuditFilters() {
   filterAudit();
 }
 
+// ── Settings ──────────────────────────────────────────────────
+const MONTH_NAMES = ['','January','February','March','April','May','June','July','August','September','October','November','December'];
+
+async function loadSettings() {
+  try {
+    const { settings } = await api('GET', '/settings/finance');
+    const s = settings;
+
+    // Populate form
+    if (el('setting-threshold')) el('setting-threshold').value = s.approval_threshold ?? 500;
+    if (el('setting-fiscal'))    el('setting-fiscal').value    = s.fiscal_year_start   ?? 1;
+    if (el('setting-tax'))       el('setting-tax').value       = s.tax_rate            ?? 0;
+
+    // Auto-approve role checkboxes
+    const autoRoles = s.auto_approve_roles || ['farm_owner'];
+    document.querySelectorAll('#auto-approve-roles input[type=checkbox]:not([disabled])').forEach(cb => {
+      cb.checked = autoRoles.includes(cb.value);
+    });
+
+    // Update live preview on threshold input
+    updateThresholdPreview(s.approval_threshold ?? 500);
+    el('setting-threshold')?.addEventListener('input', function() { updateThresholdPreview(+this.value); });
+
+    // Summary panel
+    const threshold = +s.approval_threshold || 500;
+    if (el('sum-threshold')) el('sum-threshold').textContent = `GHS ${fmt(threshold)}`;
+    if (el('sum-roles'))     el('sum-roles').textContent     = autoRoles.join(', ') || 'None';
+    if (el('sum-fiscal'))    el('sum-fiscal').textContent    = MONTH_NAMES[+s.fiscal_year_start || 1];
+    if (el('sum-tax'))       el('sum-tax').textContent       = (s.tax_rate || 0) + '%';
+
+    const ruleBox = el('sum-rule-box');
+    const ruleText = el('sum-rule-text');
+    if (ruleText) {
+      ruleText.innerHTML = threshold === 0
+        ? '⚠ <strong>All transactions</strong> require approval regardless of amount.'
+        : `Transactions above <strong>GHS ${fmt(threshold)}</strong> need approval unless the user is in an auto-approved role.`;
+    }
+    if (ruleBox) ruleBox.className = `settings-rule-box ${threshold === 0 ? 'rule-warn' : 'rule-info'}`;
+
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+function updateThresholdPreview(val) {
+  const p = el('threshold-preview');
+  if (!p) return;
+  if (val === 0) {
+    p.textContent  = 'All transactions will require approval.';
+    p.className    = 'settings-preview settings-preview-warn';
+  } else {
+    p.textContent  = `Transactions above GHS ${fmt(val)} need approval.`;
+    p.className    = 'settings-preview settings-preview-info';
+  }
+}
+
+async function saveFinanceSettings(e) {
+  e.preventDefault();
+  const threshold = +(el('setting-threshold')?.value ?? 500);
+  const fiscal    = +(el('setting-fiscal')?.value ?? 1);
+  const tax       = +(el('setting-tax')?.value ?? 0);
+
+  const autoRoles = Array.from(
+    document.querySelectorAll('#auto-approve-roles input[type=checkbox]:checked')
+  ).map(cb => cb.value);
+
+  // Always include super_admin
+  if (!autoRoles.includes('super_admin')) autoRoles.unshift('super_admin');
+
+  try {
+    await api('PUT', '/settings/finance', {
+      approval_threshold: threshold,
+      auto_approve_roles: autoRoles,
+      fiscal_year_start:  fiscal,
+      tax_rate:           tax,
+    });
+    toast('Settings saved!');
+    loadSettings();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
 // ── Users & Access Control ────────────────────────────────────
 function openCreateUser() {
   const isSuperAdmin = currentUser?.role === 'super_admin';
@@ -2005,7 +2085,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Forms
   const formMap = {
-    'form-age':          saveAgeUpdate,
     'form-batch':        createBatch,
     'form-pen':          createPen,
     'form-eggs':         logEggs,
