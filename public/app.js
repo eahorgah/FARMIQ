@@ -1433,6 +1433,19 @@ const MONTH_NAMES = ['','January','February','March','April','May','June','July'
 
 let _logoDataUrl = null; // holds the base64 data URL of the selected logo
 
+function applyBranding(name, logoUrl) {
+  const nameEl = el('header-farm-name');
+  const iconEl = el('header-icon');
+  if (nameEl && name) nameEl.textContent = name;
+  if (iconEl) {
+    if (logoUrl) {
+      iconEl.innerHTML = `<img src="${logoUrl}" alt="logo" style="height:32px;width:32px;border-radius:8px;object-fit:contain;background:#fff;padding:2px"/>`;
+    } else {
+      iconEl.textContent = '🌱';
+    }
+  }
+}
+
 function handleLogoUpload(input) {
   const file = input.files[0];
   if (!file) return;
@@ -1530,6 +1543,7 @@ async function loadOrgSettings() {
     if (el('org-currency')) el('org-currency').value = org.currency || 'GHS';
     previewLogo(org.logo_url || '');
     updateOrgPreview();
+    applyBranding(org.name, org.logo_url);
 
     // Wire live preview updates
     ['org-name','org-country','org-region','org-phone','org-email','org-address'].forEach(id => {
@@ -1557,6 +1571,7 @@ async function saveOrgSettings(e) {
     await api('PUT', '/settings/org', body);
     toast('Farm profile updated', 'success');
     updateOrgPreview();
+    applyBranding(body.name, body.logo_url);
   } catch (err) { toast(err.message, 'error'); }
   finally { btn.disabled = false; btn.textContent = orig; }
 }
