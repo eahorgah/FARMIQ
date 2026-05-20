@@ -46,10 +46,12 @@ app.use(helmet({
 }));
 
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000')
-  .split(',').map(o => o.trim()).filter(Boolean);
+  .split(',').map(o => o.trim().replace(/\/$/, '')).filter(Boolean);
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    if (!origin) return callback(null, true);
+    const clean = origin.replace(/\/$/, '');
+    if (allowedOrigins.includes(clean) || /\.vercel\.app$/.test(clean)) return callback(null, true);
     callback(new Error('CORS policy: origin not allowed'));
   },
   credentials: true,
