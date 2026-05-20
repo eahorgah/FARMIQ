@@ -120,7 +120,7 @@ app.get('/api/debug-db', async (req, res) => {
       pool.query('SELECT NOW() as time'),
       pool.query('SELECT COUNT(*) as count, MAX(email) as sample_email FROM users'),
     ]);
-    res.json({ ok: true, time: time.rows[0].time, user_count: users.rows[0].count, sample_email: users.rows[0].sample_email, node_env: process.env.NODE_ENV });
+    res.json({ ok: true, time: time.rows[0].time, user_count: users.rows[0].count, sample_email: users.rows[0].sample_email, node_env: process.env.NODE_ENV, has_jwt_secret: !!process.env.JWT_SECRET, has_jwt_refresh: !!process.env.JWT_REFRESH_SECRET, allowed_origins: process.env.ALLOWED_ORIGINS });
   } catch (err) {
     res.json({ ok: false, error: err.message, code: err.code, node_env: process.env.NODE_ENV });
   }
