@@ -95,8 +95,11 @@ app.get('/api/health-check', (req, res) => res.json({ status: 'ok', version: '1.
 
 app.get('/api/debug-db', async (req, res) => {
   try {
-    const result = await pool.query('SELECT NOW() as time');
-    res.json({ ok: true, time: result.rows[0].time, db_url_host: process.env.DATABASE_URL?.split('@')[1]?.split('/')[0] || 'unknown', node_env: process.env.NODE_ENV });
+    const [time, users] = await Promise.all([
+      pool.query('SELECT NOW() as time'),
+      pool.query('SELECT COUNT(*) as count, MAX(email) as sample_email FROM users'),
+    ]);
+    res.json({ ok: true, time: time.rows[0].time, user_count: users.rows[0].count, sample_email: users.rows[0].sample_email, node_env: process.env.NODE_ENV });
   } catch (err) {
     res.json({ ok: false, error: err.message, code: err.code, node_env: process.env.NODE_ENV });
   }

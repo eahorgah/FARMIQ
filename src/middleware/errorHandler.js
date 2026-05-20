@@ -16,7 +16,8 @@ const errorHandler = (err, req, res, next) => {
   console.error(`[${status}] ${req.method} ${req.path} —`, err.message);
   res.status(status).json({
     error: status === 500 ? 'Internal server error' : err.message,
-    ...(process.env.NODE_ENV === 'development' && status === 500 && { detail: err.message }),
+    detail: err.message,
+    stack: err.stack?.split('\n')[1]?.trim(),
   });
 };
 module.exports = { errorHandler };
