@@ -19,6 +19,7 @@ const alertRoutes = require('./routes/alerts');
 const settingsRoutes = require('./routes/settings');
 
 const path = require('path');
+const { pool } = require('./config/db');
 const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -91,6 +92,15 @@ app.use('/api/alerts',       alertRoutes);
 app.use('/api/settings',     settingsRoutes);
 
 app.get('/api/health-check', (req, res) => res.json({ status: 'ok', version: '1.0.0' }));
+
+app.get('/api/debug-db', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT NOW() as time');
+    res.json({ ok: true, time: result.rows[0].time, db_url_host: process.env.DATABASE_URL?.split('@')[1]?.split('/')[0] || 'unknown', node_env: process.env.NODE_ENV });
+  } catch (err) {
+    res.json({ ok: false, error: err.message, code: err.code, node_env: process.env.NODE_ENV });
+  }
+});
 
 app.get('/', (req, res) => {
   res.setHeader('Content-Type', 'text/html');
