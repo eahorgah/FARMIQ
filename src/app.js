@@ -93,6 +93,27 @@ app.use('/api/settings',     settingsRoutes);
 
 app.get('/api/health-check', (req, res) => res.json({ status: 'ok', version: '1.0.0' }));
 
+app.get('/api/test-write', async (req, res) => {
+  const client = await pool.connect();
+  const steps = [];
+  try {
+    steps.push('connect ok');
+    await client.query('BEGIN');
+    steps.push('BEGIN ok');
+    const { rows: [org] } = await client.query(
+      `INSERT INTO organizations (name, slug) VALUES ($1, $2) RETURNING id`,
+      ['_test_org', '_test_' + Date.now()]
+    );
+    steps.push('INSERT org ok: ' + org.id);
+    await client.query('ROLLBACK');
+    steps.push('ROLLBACK ok');
+    res.json({ ok: true, steps });
+  } catch (err) {
+    try { await client.query('ROLLBACK'); } catch {}
+    res.json({ ok: false, steps, error: err.message, code: err.code });
+  } finally { client.release(); }
+});
+
 app.get('/api/debug-db', async (req, res) => {
   try {
     const [time, users] = await Promise.all([
