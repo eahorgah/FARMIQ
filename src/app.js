@@ -24,6 +24,8 @@ const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
 
+app.set('trust proxy', 1); // trust Vercel's proxy for correct IP detection
+
 // ── Static frontend ────────────────────────────────────────
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
