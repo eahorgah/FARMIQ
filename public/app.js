@@ -1431,24 +1431,59 @@ function clearAuditFilters() {
 // ── Settings ──────────────────────────────────────────────────
 const MONTH_NAMES = ['','January','February','March','April','May','June','July','August','September','October','November','December'];
 
-function previewLogo(url) {
-  const wrap = el('logo-preview-wrap');
-  const img  = el('logo-preview-img');
-  if (!wrap || !img) return;
-  if (url && url.trim()) {
-    img.src = url.trim();
-    wrap.style.display = 'block';
-    updateOrgPreview();
-  } else {
-    wrap.style.display = 'none';
-    updateOrgPreview();
+let _logoDataUrl = null; // holds the base64 data URL of the selected logo
+
+function handleLogoUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 500 * 1024) {
+    toast('Image too large — maximum 500 KB', 'error');
+    input.value = '';
+    return;
   }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    _logoDataUrl = e.target.result;
+    const wrap = el('logo-preview-wrap');
+    const img  = el('logo-preview-img');
+    const placeholder = el('logo-upload-placeholder');
+    const nameEl = el('logo-file-name');
+    const removeBtn = el('logo-remove-btn');
+    if (img)  img.src = _logoDataUrl;
+    if (wrap) wrap.style.display = 'block';
+    if (placeholder) placeholder.style.display = 'none';
+    if (nameEl) nameEl.textContent = file.name;
+    if (removeBtn) removeBtn.style.display = 'inline-block';
+    updateOrgPreview();
+  };
+  reader.readAsDataURL(file);
 }
 
 function clearLogo() {
-  const input = el('org-logo-url');
+  _logoDataUrl = null;
+  const input = el('logo-file-input');
   if (input) input.value = '';
-  previewLogo('');
+  const wrap = el('logo-preview-wrap');
+  const placeholder = el('logo-upload-placeholder');
+  const removeBtn = el('logo-remove-btn');
+  if (wrap) wrap.style.display = 'none';
+  if (placeholder) placeholder.style.display = 'block';
+  if (removeBtn) removeBtn.style.display = 'none';
+  updateOrgPreview();
+}
+
+function previewLogo(dataUrl) {
+  if (!dataUrl) { clearLogo(); return; }
+  _logoDataUrl = dataUrl;
+  const wrap = el('logo-preview-wrap');
+  const img  = el('logo-preview-img');
+  const placeholder = el('logo-upload-placeholder');
+  const removeBtn = el('logo-remove-btn');
+  if (img)  img.src = dataUrl;
+  if (wrap) wrap.style.display = 'block';
+  if (placeholder) placeholder.style.display = 'none';
+  if (removeBtn) removeBtn.style.display = 'inline-block';
+  updateOrgPreview();
 }
 
 function updateOrgPreview() {
@@ -1458,17 +1493,15 @@ function updateOrgPreview() {
   const phone   = el('org-phone')?.value   || '';
   const email   = el('org-email')?.value   || '';
   const address = el('org-address')?.value || '';
-  const logoUrl = el('org-logo-url')?.value || '';
 
   if (el('org-preview-name'))    el('org-preview-name').textContent    = name;
   if (el('org-preview-country')) el('org-preview-country').textContent = [region, country].filter(Boolean).join(', ') || '—';
 
   const logoWrap = el('org-preview-logo');
   if (logoWrap) {
-    if (logoUrl.trim()) {
-      logoWrap.innerHTML = `<img src="${logoUrl.trim()}" alt="Logo"
-        style="max-height:72px;max-width:160px;border-radius:12px;object-fit:contain;border:1px solid var(--gray-200);padding:6px;background:#fff"
-        onerror="this.style.display='none'"/>`;
+    if (_logoDataUrl) {
+      logoWrap.innerHTML = `<img src="${_logoDataUrl}" alt="Logo"
+        style="max-height:72px;max-width:160px;border-radius:12px;object-fit:contain;border:1px solid var(--gray-200);padding:6px;background:#fff"/>`;
     } else {
       logoWrap.innerHTML = `<div style="width:72px;height:72px;background:linear-gradient(135deg,#16a34a,#15803d);border-radius:16px;display:inline-flex;align-items:center;justify-content:center;font-size:32px">🌱</div>`;
     }
@@ -1489,7 +1522,6 @@ async function loadOrgSettings() {
   try {
     const { org } = await api('GET', '/settings/org');
     if (el('org-name'))     el('org-name').value     = org.name     || '';
-    if (el('org-logo-url')) el('org-logo-url').value = org.logo_url || '';
     if (el('org-phone'))    el('org-phone').value    = org.phone    || '';
     if (el('org-email'))    el('org-email').value    = org.email    || '';
     if (el('org-address'))  el('org-address').value  = org.address  || '';
@@ -1514,7 +1546,7 @@ async function saveOrgSettings(e) {
   try {
     const body = {
       name:     el('org-name')?.value.trim()    || undefined,
-      logo_url: el('org-logo-url')?.value.trim() || null,
+      logo_url: _logoDataUrl,
       phone:    el('org-phone')?.value.trim()   || null,
       email:    el('org-email')?.value.trim()   || null,
       address:  el('org-address')?.value.trim() || null,

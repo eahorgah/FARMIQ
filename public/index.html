@@ -1069,16 +1069,26 @@
 
                 <div class="settings-field">
                   <div class="settings-field-label">
-                    <strong>Logo URL</strong>
-                    <span class="settings-field-hint">Paste a direct link to your logo image (PNG, JPG, SVG). Use an image hosting service like Imgur or Cloudinary.</span>
+                    <strong>Farm Logo</strong>
+                    <span class="settings-field-hint">Upload a PNG, JPG or SVG — max 500 KB. The image will be shown on reports and the app header.</span>
                   </div>
                   <div class="settings-field-control">
-                    <input type="url" id="org-logo-url" name="logo_url" placeholder="https://example.com/logo.png" class="form-control" oninput="previewLogo(this.value)"/>
-                    <div id="logo-preview-wrap" style="margin-top:12px;display:none">
-                      <img id="logo-preview-img" src="" alt="Logo preview"
-                        style="max-height:80px;max-width:200px;border-radius:8px;border:1px solid var(--gray-200);padding:6px;background:#fff;object-fit:contain"/>
-                      <button type="button" class="btn btn-outline btn-xs" style="margin-left:10px;vertical-align:middle" onclick="clearLogo()">Remove</button>
+                    <div id="logo-upload-area" onclick="document.getElementById('logo-file-input').click()"
+                      style="border:2px dashed var(--gray-300);border-radius:10px;padding:20px 24px;cursor:pointer;text-align:center;transition:border-color .15s;background:#fafafa"
+                      onmouseenter="this.style.borderColor='#16a34a'" onmouseleave="this.style.borderColor='var(--gray-300)'">
+                      <div id="logo-upload-placeholder">
+                        <div style="font-size:32px;margin-bottom:6px">📷</div>
+                        <div style="font-size:14px;color:var(--gray-600);font-weight:500">Click to upload logo</div>
+                        <div style="font-size:12px;color:var(--gray-400);margin-top:2px">PNG, JPG, SVG · max 500 KB</div>
+                      </div>
+                      <div id="logo-preview-wrap" style="display:none">
+                        <img id="logo-preview-img" src="" alt="Logo preview"
+                          style="max-height:80px;max-width:200px;border-radius:8px;border:1px solid var(--gray-200);padding:6px;background:#fff;object-fit:contain"/>
+                        <div style="margin-top:8px;font-size:12px;color:var(--gray-500)" id="logo-file-name"></div>
+                      </div>
                     </div>
+                    <input type="file" id="logo-file-input" accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp" style="display:none" onchange="handleLogoUpload(this)"/>
+                    <button type="button" id="logo-remove-btn" class="btn btn-outline btn-xs" style="margin-top:8px;display:none" onclick="clearLogo()">Remove Logo</button>
                   </div>
                 </div>
 
