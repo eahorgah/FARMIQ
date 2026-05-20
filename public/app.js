@@ -146,6 +146,9 @@ function showApp() {
 
   // Fetch unread alert count to populate the sidebar badge
   api('GET', '/alerts/unread-count').then(d => updateAlertBadge(d.count)).catch(() => {});
+
+  // Apply farm branding (name + logo) to header immediately after login
+  api('GET', '/settings/org').then(({ org }) => applyBranding(org.name, org.logo_url)).catch(() => {});
 }
 function showAuth() {
   el('auth-page').classList.remove('hidden');
