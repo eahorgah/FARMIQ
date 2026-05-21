@@ -21,7 +21,10 @@ router.get('/batches', requirePermission('flock', 'view'), async (req, res) => {
       `SELECT b.*, p.name AS pen_name,
               FLOOR(EXTRACT(DAY FROM NOW() - b.doc_date::timestamptz) / 7) AS age_weeks,
               (SELECT SUM(eggs_collected) FROM egg_production_records WHERE batch_id = b.id AND record_date >= CURRENT_DATE - 7) AS eggs_last_7d,
-              (SELECT COUNT(*) FROM health_records WHERE batch_id = b.id AND status = 'ongoing') AS open_health_events
+              (SELECT COUNT(*) FROM health_records WHERE batch_id = b.id AND status = 'ongoing') AS open_health_events,
+              COALESCE((SELECT SUM(mortalities) FROM daily_flock_records WHERE batch_id = b.id), 0) AS total_mortalities,
+              COALESCE((SELECT SUM(sold)        FROM daily_flock_records WHERE batch_id = b.id), 0) AS total_sold,
+              COALESCE(b.culled_count, 0) AS total_culled
        FROM batches b
        LEFT JOIN pens p ON p.id = b.pen_id
        WHERE ${conditions.join(' AND ')}

@@ -209,11 +209,14 @@ async function loadFlock() {
               <td><span class="badge ${purposeColor[b.purpose]||'b-gray'}">${b.purpose}</span></td>
               <td><span class="badge ${statusColor[b.status]||'b-gray'}">${b.status}</span></td>
               <td><strong>${(+b.current_count||0).toLocaleString()}</strong></td>
+              <td style="color:var(--red,#ef4444)">${(+b.total_mortalities||0).toLocaleString()}</td>
+              <td style="color:var(--orange,#f97316)">${(+b.total_culled||0).toLocaleString()}</td>
+              <td style="color:var(--green,#22c55e)">${(+b.total_sold||0).toLocaleString()}</td>
               <td>${ageWks != null ? `<span class="age-badge">${ageWks} wks</span><br><small style="color:var(--gray-400);font-size:10px">${ageDays} days</small>` : '—'}</td>
               <td>${b.pen_name || '—'}</td>
               <td>${b.eggs_last_7d || 0}</td>
               <td style="color:var(--gray-400);font-size:12px">${b.doc_date ? fmtDate(b.doc_date) : '—'}</td>`;
-    }, 9, 'No batches yet — create your first batch');
+    }, 12, 'No batches yet — create your first batch');
 
     // Inject virtual Culled Pen row
     const cp = cd.culled_pen;
@@ -1120,13 +1123,14 @@ async function printReceipt(t) {
   let org = { name: 'FarmIQ', address: '', phone: '', email: '', logo_url: '', region: '', country: '' };
   try { const d = await api('GET', '/settings/org'); org = { ...org, ...d.org }; } catch {}
 
-  const logoHtml = org.logo_url
-    ? `<img src="${org.logo_url}" alt="logo" style="max-height:72px;max-width:180px;object-fit:contain;margin-bottom:8px"/>`
+  const effectiveLogo = org.logo_url || _logoDataUrl || '';
+
+  const logoHtml = effectiveLogo
+    ? `<img src="${effectiveLogo}" alt="logo" style="max-height:72px;max-width:180px;object-fit:contain;margin-bottom:8px"/>`
     : `<div style="font-size:42px;margin-bottom:8px">🌱</div>`;
 
-  // Watermark: only shown if there's a logo
-  const watermarkStyle = org.logo_url
-    ? `background-image:url('${org.logo_url}');background-repeat:no-repeat;background-position:center center;background-size:260px 260px;`
+  const watermarkStyle = effectiveLogo
+    ? `background-image:url('${effectiveLogo}');background-repeat:no-repeat;background-position:center center;background-size:260px 260px;`
     : '';
 
   const addressLines = [org.address, org.region, org.country].filter(Boolean).join(', ');
@@ -1624,6 +1628,7 @@ let _logoDataUrl = null; // holds the base64 data URL of the selected logo
 const _receiptMap = {}; // id → transaction object, avoids JSON injection in onclick
 
 function applyBranding(name, logoUrl) {
+  if (logoUrl) _logoDataUrl = logoUrl;
   const nameEl = el('header-farm-name');
   const iconEl = el('header-icon');
   if (nameEl && name) nameEl.textContent = name;
