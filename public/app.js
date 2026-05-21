@@ -1095,24 +1095,33 @@ async function createTransaction(form) {
 }
 
 async function printReceipt(t) {
-  let org = { name: 'FarmIQ', address: '', phone: '', email: '', logo_url: '' };
+  let org = { name: 'FarmIQ', address: '', phone: '', email: '', logo_url: '', region: '', country: '' };
   try { const d = await api('GET', '/settings/org'); org = { ...org, ...d.org }; } catch {}
 
   const logoHtml = org.logo_url
-    ? `<img src="${org.logo_url}" alt="logo" style="max-height:70px;max-width:180px;object-fit:contain;margin-bottom:6px"/>`
-    : `<div style="font-size:40px;margin-bottom:6px">🌱</div>`;
+    ? `<img src="${org.logo_url}" alt="logo" style="max-height:72px;max-width:180px;object-fit:contain;margin-bottom:8px"/>`
+    : `<div style="font-size:42px;margin-bottom:8px">🌱</div>`;
+
+  // Watermark: only shown if there's a logo
+  const watermarkStyle = org.logo_url
+    ? `background-image:url('${org.logo_url}');background-repeat:no-repeat;background-position:center center;background-size:260px 260px;`
+    : '';
 
   const addressLines = [org.address, org.region, org.country].filter(Boolean).join(', ');
-  const contactLines = [org.phone ? `Tel: ${org.phone}` : '', org.email ? `Email: ${org.email}` : ''].filter(Boolean).join(' &nbsp;|&nbsp; ');
+  const contactLines = [org.phone ? `Tel: ${org.phone}` : '', org.email ? `Email: ${org.email}` : ''].filter(Boolean).join('  |  ');
 
   const hasQty = t.sale_qty && t.sale_unit && t.sale_unit_price;
   const itemsHtml = hasQty
-    ? `<tr><td style="padding:8px 4px">${(t.category||'').replace(/_/g,' ')}</td>
-         <td style="padding:8px 4px;text-align:center">${t.sale_qty} ${t.sale_unit}</td>
-         <td style="padding:8px 4px;text-align:right">GHS ${fmt(t.sale_unit_price)}</td>
-         <td style="padding:8px 4px;text-align:right"><strong>GHS ${fmt(t.amount)}</strong></td></tr>`
-    : `<tr><td colspan="3" style="padding:8px 4px">${t.description}</td>
-         <td style="padding:8px 4px;text-align:right"><strong>GHS ${fmt(t.amount)}</strong></td></tr>`;
+    ? `<tr>
+         <td>${(t.category||'').replace(/_/g,' ')}</td>
+         <td style="text-align:center">${t.sale_qty} ${t.sale_unit}</td>
+         <td style="text-align:right">GHS ${fmt(t.sale_unit_price)}</td>
+         <td style="text-align:right"><strong>GHS ${fmt(t.amount)}</strong></td>
+       </tr>`
+    : `<tr>
+         <td colspan="3">${t.description}</td>
+         <td style="text-align:right"><strong>GHS ${fmt(t.amount)}</strong></td>
+       </tr>`;
 
   const statusColor = { approved:'#16a34a', pending:'#d97706', rejected:'#dc2626' };
   const sColor = statusColor[t.approval_status] || '#6b7280';
@@ -1121,75 +1130,113 @@ async function printReceipt(t) {
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"/>
   <title>Receipt ${t.transaction_ref||''}</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
     * { box-sizing:border-box; margin:0; padding:0; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; background:#f5f5f5; display:flex; justify-content:center; padding:30px 10px; }
-    .receipt { background:#fff; width:420px; padding:32px 28px; border-radius:12px; box-shadow:0 2px 16px rgba(0,0,0,.12); }
-    .header { text-align:center; border-bottom:2px solid #e5e7eb; padding-bottom:18px; margin-bottom:18px; }
-    .company-name { font-size:22px; font-weight:800; color:#111; margin-bottom:2px; }
-    .company-meta { font-size:12px; color:#6b7280; line-height:1.6; }
-    .receipt-title { font-size:13px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:#fff; background:#16a34a; padding:4px 14px; border-radius:20px; display:inline-block; margin:14px 0 4px; }
-    .ref { font-size:12px; color:#6b7280; margin-bottom:2px; }
-    .meta-row { display:flex; justify-content:space-between; font-size:13px; padding:5px 0; border-bottom:1px solid #f3f4f6; }
-    .meta-row span:first-child { color:#6b7280; }
-    .meta-row span:last-child { font-weight:600; color:#111; }
-    table { width:100%; border-collapse:collapse; margin:14px 0; font-size:13px; }
-    thead th { background:#f9fafb; padding:8px 4px; text-align:left; font-size:11px; text-transform:uppercase; color:#6b7280; letter-spacing:.05em; }
-    thead th:last-child, thead th:nth-child(3) { text-align:right; }
+    body { font-family:'Inter',Arial,sans-serif; background:#e5e7eb; display:flex; justify-content:center; align-items:flex-start; padding:32px 12px; min-height:100vh; }
+    .receipt {
+      position:relative; overflow:hidden;
+      background:#fff; width:460px; padding:36px 32px 28px;
+      border-radius:16px; box-shadow:0 4px 32px rgba(0,0,0,.15);
+    }
+    /* Watermark layer */
+    .receipt::before {
+      content:''; position:absolute; inset:0; z-index:0;
+      ${watermarkStyle}
+      opacity:0.06; pointer-events:none;
+    }
+    .receipt > * { position:relative; z-index:1; }
+    /* Header */
+    .header { text-align:center; padding-bottom:20px; margin-bottom:20px; border-bottom:2px solid #e5e7eb; }
+    .company-name { font-size:24px; font-weight:800; color:#111; margin-bottom:3px; }
+    .company-meta { font-size:12px; color:#6b7280; line-height:1.7; margin-top:4px; }
+    .badge-title { display:inline-block; background:#16a34a; color:#fff; font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; padding:4px 16px; border-radius:20px; margin:14px 0 6px; }
+    .ref { font-size:11px; color:#9ca3af; letter-spacing:.04em; }
+    /* Meta rows */
+    .meta { margin-bottom:16px; }
+    .meta-row { display:flex; justify-content:space-between; align-items:center; font-size:13px; padding:6px 0; border-bottom:1px solid #f3f4f6; }
+    .meta-row .lbl { color:#6b7280; }
+    .meta-row .val { font-weight:600; color:#111; text-align:right; }
+    .status-badge { display:inline-block; padding:2px 10px; border-radius:20px; font-size:11px; font-weight:700; color:#fff; background:${sColor}; }
+    /* Items table */
+    table { width:100%; border-collapse:collapse; font-size:13px; margin:16px 0 8px; }
+    thead th { background:#f9fafb; padding:9px 6px; text-align:left; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#6b7280; border-bottom:2px solid #e5e7eb; }
     thead th:nth-child(2) { text-align:center; }
-    tbody tr:nth-child(even) { background:#fafafa; }
-    .total-row { border-top:2px solid #e5e7eb; }
-    .total-row td { padding:10px 4px; font-weight:700; font-size:15px; }
-    .status-badge { display:inline-block; padding:3px 12px; border-radius:20px; font-size:11px; font-weight:700; color:#fff; background:${sColor}; }
-    .footer { text-align:center; margin-top:22px; padding-top:16px; border-top:1px dashed #e5e7eb; font-size:11px; color:#9ca3af; line-height:1.8; }
-    @media print { body { background:#fff; padding:0; } .receipt { box-shadow:none; border-radius:0; width:100%; } .no-print { display:none; } }
-  </style></head><body>
+    thead th:nth-child(3), thead th:nth-child(4) { text-align:right; }
+    tbody td { padding:9px 6px; border-bottom:1px solid #f3f4f6; color:#374151; }
+    tbody td:nth-child(2) { text-align:center; }
+    tbody td:nth-child(3), tbody td:nth-child(4) { text-align:right; }
+    .total-row td { padding:12px 6px; font-weight:700; font-size:15px; border-top:2px solid #e5e7eb; border-bottom:none; }
+    .total-row td:last-child { color:#16a34a; font-size:17px; }
+    /* Footer */
+    .footer { text-align:center; margin-top:20px; padding-top:16px; border-top:1px dashed #d1d5db; font-size:11px; color:#9ca3af; line-height:2; }
+    .paid-stamp {
+      display:inline-block; border:3px solid #16a34a; color:#16a34a;
+      font-size:22px; font-weight:800; letter-spacing:.15em; padding:4px 18px;
+      border-radius:6px; transform:rotate(-8deg); margin:10px 0 6px;
+      text-transform:uppercase; opacity:.85;
+    }
+    /* Print */
+    @media print {
+      body { background:#fff; padding:0; }
+      .receipt { box-shadow:none; border-radius:0; width:100%; }
+      .no-print { display:none !important; }
+    }
+  </style></head>
+  <body>
   <div class="receipt">
     <div class="header">
       ${logoHtml}
       <div class="company-name">${org.name}</div>
-      <div class="company-meta">${addressLines ? addressLines + '<br/>' : ''}${contactLines}</div>
-      <div class="receipt-title">Sales Receipt</div>
-      <div class="ref">${t.transaction_ref || ''}</div>
+      <div class="company-meta">
+        ${addressLines ? `<div>${addressLines}</div>` : ''}
+        ${contactLines ? `<div>${contactLines}</div>` : ''}
+      </div>
+      <div class="badge-title">Sales Receipt</div><br/>
+      <div class="ref"># ${t.transaction_ref || 'N/A'}</div>
     </div>
 
-    <div class="meta-row"><span>Date</span><span>${fmtDate(t.transaction_date)}</span></div>
-    ${t.counterparty_name ? `<div class="meta-row"><span>Customer</span><span>${t.counterparty_name}</span></div>` : ''}
-    ${t.counterparty_phone ? `<div class="meta-row"><span>Phone</span><span>${t.counterparty_phone}</span></div>` : ''}
-    <div class="meta-row"><span>Payment</span><span>${(t.payment_method||'cash').replace(/_/g,' ')}</span></div>
-    <div class="meta-row"><span>Status</span><span><span class="status-badge">${t.approval_status}</span></span></div>
-    ${t.invoice_number ? `<div class="meta-row"><span>Invoice #</span><span>${t.invoice_number}</span></div>` : ''}
+    <div class="meta">
+      <div class="meta-row"><span class="lbl">Date</span><span class="val">${fmtDate(t.transaction_date)}</span></div>
+      ${t.counterparty_name ? `<div class="meta-row"><span class="lbl">Customer</span><span class="val">${t.counterparty_name}</span></div>` : ''}
+      ${t.counterparty_phone ? `<div class="meta-row"><span class="lbl">Phone</span><span class="val">${t.counterparty_phone}</span></div>` : ''}
+      ${t.invoice_number ? `<div class="meta-row"><span class="lbl">Invoice #</span><span class="val">${t.invoice_number}</span></div>` : ''}
+      <div class="meta-row"><span class="lbl">Payment Method</span><span class="val">${(t.payment_method||'cash').replace(/_/g,' ')}</span></div>
+      <div class="meta-row"><span class="lbl">Status</span><span class="val"><span class="status-badge">${t.approval_status}</span></span></div>
+    </div>
 
     <table>
       <thead><tr>
-        <th>Item</th><th style="text-align:center">Qty</th>
-        <th style="text-align:right">Unit Price</th><th style="text-align:right">Amount</th>
+        <th>Description</th><th>Qty</th><th>Unit Price</th><th>Amount</th>
       </tr></thead>
       <tbody>
         ${itemsHtml}
         <tr class="total-row">
-          <td colspan="3" style="text-align:right;color:#6b7280;font-size:13px">Total</td>
-          <td style="text-align:right;color:#16a34a">GHS ${fmt(t.amount)}</td>
+          <td colspan="3" style="text-align:right;color:#6b7280;font-size:13px;font-weight:600">TOTAL</td>
+          <td>GHS ${fmt(t.amount)}</td>
         </tr>
       </tbody>
     </table>
 
-    ${t.description && hasQty ? `<div style="font-size:12px;color:#6b7280;margin-top:-6px;margin-bottom:12px">Note: ${t.description}</div>` : ''}
+    ${t.description && hasQty ? `<div style="font-size:12px;color:#6b7280;margin-bottom:10px">Note: ${t.description}</div>` : ''}
 
-    <div class="footer">
-      ${paid ? '✓ Payment received — Thank you!' : '⏳ Awaiting approval'}<br/>
-      Generated ${new Date().toLocaleString()}<br/>
-      ${org.name}
+    <div style="text-align:center;margin:14px 0 4px">
+      ${paid ? `<div class="paid-stamp">PAID</div>` : `<div style="font-size:12px;color:#d97706;font-weight:600">⏳ Pending Approval</div>`}
     </div>
 
-    <div class="no-print" style="text-align:center;margin-top:20px">
-      <button onclick="window.print()" style="background:#16a34a;color:#fff;border:none;padding:10px 28px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">🖨 Print Receipt</button>
-      &nbsp;
-      <button onclick="window.close()" style="background:#f3f4f6;color:#374151;border:none;padding:10px 20px;border-radius:8px;font-size:14px;cursor:pointer">Close</button>
+    <div class="footer">
+      Thank you for your business!<br/>
+      ${org.name}${addressLines ? ' · ' + addressLines : ''}<br/>
+      Generated: ${new Date().toLocaleString()}
+    </div>
+
+    <div class="no-print" style="text-align:center;margin-top:24px;display:flex;gap:10px;justify-content:center">
+      <button onclick="window.print()" style="background:#16a34a;color:#fff;border:none;padding:11px 30px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px">🖨 Print / Save PDF</button>
+      <button onclick="window.close()" style="background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;padding:11px 22px;border-radius:8px;font-size:14px;cursor:pointer">Close</button>
     </div>
   </div>
   </body></html>`;
 
-  const w = window.open('', '_blank', 'width=520,height=750,scrollbars=yes');
+  const w = window.open('', '_blank', 'width=560,height=800,scrollbars=yes');
   w.document.write(html);
   w.document.close();
 }
