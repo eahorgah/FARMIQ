@@ -809,8 +809,9 @@ async function loadIncome() {
        <td style="font-size:12px">${t.sale_unit_price ? 'GHS '+fmt(t.sale_unit_price) : '—'}</td>
        <td><strong class="amount-positive">GHS ${fmt(t.amount)}</strong></td>
        <td>${t.counterparty_name || '—'}</td>
-       <td><span class="badge ${sColor[t.approval_status]||'b-gray'}">${t.approval_status}</span></td>`;
-    }, 7, 'No income recorded yet — add your first income entry');
+       <td><span class="badge ${sColor[t.approval_status]||'b-gray'}">${t.approval_status}</span></td>
+       <td><button class="btn btn-outline btn-xs" onclick='printReceipt(${JSON.stringify(t)})'>🧾 Receipt</button></td>`;
+    }, 8, 'No income recorded yet — add your first income entry');
   } catch (e) { toast(e.message, 'error'); }
 }
 
@@ -1091,6 +1092,106 @@ async function createTransaction(form) {
   if (!data.counterparty_name) delete data.counterparty_name;
   await api('POST', '/transactions', data);
   form.reset(); setToday(); hideModal('modal-tx'); toast('Transaction recorded! 💰'); loadTransactions();
+}
+
+async function printReceipt(t) {
+  let org = { name: 'FarmIQ', address: '', phone: '', email: '', logo_url: '' };
+  try { const d = await api('GET', '/settings/org'); org = { ...org, ...d.org }; } catch {}
+
+  const logoHtml = org.logo_url
+    ? `<img src="${org.logo_url}" alt="logo" style="max-height:70px;max-width:180px;object-fit:contain;margin-bottom:6px"/>`
+    : `<div style="font-size:40px;margin-bottom:6px">🌱</div>`;
+
+  const addressLines = [org.address, org.region, org.country].filter(Boolean).join(', ');
+  const contactLines = [org.phone ? `Tel: ${org.phone}` : '', org.email ? `Email: ${org.email}` : ''].filter(Boolean).join(' &nbsp;|&nbsp; ');
+
+  const hasQty = t.sale_qty && t.sale_unit && t.sale_unit_price;
+  const itemsHtml = hasQty
+    ? `<tr><td style="padding:8px 4px">${(t.category||'').replace(/_/g,' ')}</td>
+         <td style="padding:8px 4px;text-align:center">${t.sale_qty} ${t.sale_unit}</td>
+         <td style="padding:8px 4px;text-align:right">GHS ${fmt(t.sale_unit_price)}</td>
+         <td style="padding:8px 4px;text-align:right"><strong>GHS ${fmt(t.amount)}</strong></td></tr>`
+    : `<tr><td colspan="3" style="padding:8px 4px">${t.description}</td>
+         <td style="padding:8px 4px;text-align:right"><strong>GHS ${fmt(t.amount)}</strong></td></tr>`;
+
+  const statusColor = { approved:'#16a34a', pending:'#d97706', rejected:'#dc2626' };
+  const sColor = statusColor[t.approval_status] || '#6b7280';
+  const paid = t.approval_status === 'approved';
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+  <title>Receipt ${t.transaction_ref||''}</title>
+  <style>
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background:#f5f5f5; display:flex; justify-content:center; padding:30px 10px; }
+    .receipt { background:#fff; width:420px; padding:32px 28px; border-radius:12px; box-shadow:0 2px 16px rgba(0,0,0,.12); }
+    .header { text-align:center; border-bottom:2px solid #e5e7eb; padding-bottom:18px; margin-bottom:18px; }
+    .company-name { font-size:22px; font-weight:800; color:#111; margin-bottom:2px; }
+    .company-meta { font-size:12px; color:#6b7280; line-height:1.6; }
+    .receipt-title { font-size:13px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:#fff; background:#16a34a; padding:4px 14px; border-radius:20px; display:inline-block; margin:14px 0 4px; }
+    .ref { font-size:12px; color:#6b7280; margin-bottom:2px; }
+    .meta-row { display:flex; justify-content:space-between; font-size:13px; padding:5px 0; border-bottom:1px solid #f3f4f6; }
+    .meta-row span:first-child { color:#6b7280; }
+    .meta-row span:last-child { font-weight:600; color:#111; }
+    table { width:100%; border-collapse:collapse; margin:14px 0; font-size:13px; }
+    thead th { background:#f9fafb; padding:8px 4px; text-align:left; font-size:11px; text-transform:uppercase; color:#6b7280; letter-spacing:.05em; }
+    thead th:last-child, thead th:nth-child(3) { text-align:right; }
+    thead th:nth-child(2) { text-align:center; }
+    tbody tr:nth-child(even) { background:#fafafa; }
+    .total-row { border-top:2px solid #e5e7eb; }
+    .total-row td { padding:10px 4px; font-weight:700; font-size:15px; }
+    .status-badge { display:inline-block; padding:3px 12px; border-radius:20px; font-size:11px; font-weight:700; color:#fff; background:${sColor}; }
+    .footer { text-align:center; margin-top:22px; padding-top:16px; border-top:1px dashed #e5e7eb; font-size:11px; color:#9ca3af; line-height:1.8; }
+    @media print { body { background:#fff; padding:0; } .receipt { box-shadow:none; border-radius:0; width:100%; } .no-print { display:none; } }
+  </style></head><body>
+  <div class="receipt">
+    <div class="header">
+      ${logoHtml}
+      <div class="company-name">${org.name}</div>
+      <div class="company-meta">${addressLines ? addressLines + '<br/>' : ''}${contactLines}</div>
+      <div class="receipt-title">Sales Receipt</div>
+      <div class="ref">${t.transaction_ref || ''}</div>
+    </div>
+
+    <div class="meta-row"><span>Date</span><span>${fmtDate(t.transaction_date)}</span></div>
+    ${t.counterparty_name ? `<div class="meta-row"><span>Customer</span><span>${t.counterparty_name}</span></div>` : ''}
+    ${t.counterparty_phone ? `<div class="meta-row"><span>Phone</span><span>${t.counterparty_phone}</span></div>` : ''}
+    <div class="meta-row"><span>Payment</span><span>${(t.payment_method||'cash').replace(/_/g,' ')}</span></div>
+    <div class="meta-row"><span>Status</span><span><span class="status-badge">${t.approval_status}</span></span></div>
+    ${t.invoice_number ? `<div class="meta-row"><span>Invoice #</span><span>${t.invoice_number}</span></div>` : ''}
+
+    <table>
+      <thead><tr>
+        <th>Item</th><th style="text-align:center">Qty</th>
+        <th style="text-align:right">Unit Price</th><th style="text-align:right">Amount</th>
+      </tr></thead>
+      <tbody>
+        ${itemsHtml}
+        <tr class="total-row">
+          <td colspan="3" style="text-align:right;color:#6b7280;font-size:13px">Total</td>
+          <td style="text-align:right;color:#16a34a">GHS ${fmt(t.amount)}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    ${t.description && hasQty ? `<div style="font-size:12px;color:#6b7280;margin-top:-6px;margin-bottom:12px">Note: ${t.description}</div>` : ''}
+
+    <div class="footer">
+      ${paid ? '✓ Payment received — Thank you!' : '⏳ Awaiting approval'}<br/>
+      Generated ${new Date().toLocaleString()}<br/>
+      ${org.name}
+    </div>
+
+    <div class="no-print" style="text-align:center;margin-top:20px">
+      <button onclick="window.print()" style="background:#16a34a;color:#fff;border:none;padding:10px 28px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">🖨 Print Receipt</button>
+      &nbsp;
+      <button onclick="window.close()" style="background:#f3f4f6;color:#374151;border:none;padding:10px 20px;border-radius:8px;font-size:14px;cursor:pointer">Close</button>
+    </div>
+  </div>
+  </body></html>`;
+
+  const w = window.open('', '_blank', 'width=520,height=750,scrollbars=yes');
+  w.document.write(html);
+  w.document.close();
 }
 
 async function approveTx(id) {
