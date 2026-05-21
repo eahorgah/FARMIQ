@@ -385,6 +385,7 @@ CREATE INDEX idx_audit_logs_user ON audit_logs(user_id, created_at DESC);
 
 INSERT INTO role_permission_templates (role, module, can_view, can_create, can_edit, can_delete, can_approve) VALUES
 -- super_admin: everything
+('super_admin','dashboard',true,false,false,false,false),
 ('super_admin','flock',true,true,true,true,true),
 ('super_admin','health',true,true,true,true,true),
 ('super_admin','feed',true,true,true,true,true),
@@ -392,6 +393,7 @@ INSERT INTO role_permission_templates (role, module, can_view, can_create, can_e
 ('super_admin','reports',true,true,true,true,true),
 ('super_admin','users',true,true,true,true,true),
 -- farm_owner: everything except user management (super_admin only)
+('farm_owner','dashboard',true,false,false,false,false),
 ('farm_owner','flock',true,true,true,true,false),
 ('farm_owner','health',true,true,true,true,false),
 ('farm_owner','feed',true,true,true,true,false),
@@ -399,6 +401,7 @@ INSERT INTO role_permission_templates (role, module, can_view, can_create, can_e
 ('farm_owner','reports',true,true,false,false,false),
 ('farm_owner','users',true,true,true,false,false),
 -- farm_manager: farm ops full, finance view only
+('farm_manager','dashboard',true,false,false,false,false),
 ('farm_manager','flock',true,true,true,false,false),
 ('farm_manager','health',true,true,true,false,false),
 ('farm_manager','feed',true,true,true,false,false),
@@ -406,6 +409,7 @@ INSERT INTO role_permission_templates (role, module, can_view, can_create, can_e
 ('farm_manager','reports',true,false,false,false,false),
 ('farm_manager','users',false,false,false,false,false),
 -- finance_officer: finance full, farm ops read only
+('finance_officer','dashboard',false,false,false,false,false),
 ('finance_officer','flock',true,false,false,false,false),
 ('finance_officer','health',false,false,false,false,false),
 ('finance_officer','feed',true,false,false,false,false),
@@ -413,6 +417,7 @@ INSERT INTO role_permission_templates (role, module, can_view, can_create, can_e
 ('finance_officer','reports',true,true,false,false,false),
 ('finance_officer','users',false,false,false,false,false),
 -- veterinarian: health full, flock view
+('veterinarian','dashboard',false,false,false,false,false),
 ('veterinarian','flock',true,false,false,false,false),
 ('veterinarian','health',true,true,true,false,false),
 ('veterinarian','feed',false,false,false,false,false),
@@ -420,6 +425,7 @@ INSERT INTO role_permission_templates (role, module, can_view, can_create, can_e
 ('veterinarian','reports',false,false,false,false,false),
 ('veterinarian','users',false,false,false,false,false),
 -- data_entry: add only, no delete/approve
+('data_entry','dashboard',false,false,false,false,false),
 ('data_entry','flock',true,true,false,false,false),
 ('data_entry','health',true,true,false,false,false),
 ('data_entry','feed',true,true,false,false,false),
@@ -427,6 +433,7 @@ INSERT INTO role_permission_templates (role, module, can_view, can_create, can_e
 ('data_entry','reports',true,false,false,false,false),
 ('data_entry','users',false,false,false,false,false),
 -- viewer: read only, no finance
+('viewer','dashboard',false,false,false,false,false),
 ('viewer','flock',true,false,false,false,false),
 ('viewer','health',true,false,false,false,false),
 ('viewer','feed',true,false,false,false,false),

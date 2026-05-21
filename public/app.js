@@ -110,7 +110,7 @@ function logout() {
 // ── Permission helper ─────────────────────────────────────────
 function canAccess(module, action = 'view') {
   if (!currentUser) return false;
-  if (currentUser.role === 'super_admin') return true;
+  if (['super_admin', 'farm_owner'].includes(currentUser.role)) return true;
   return currentUser.permissions?.[module]?.[action] === true;
 }
 
@@ -129,7 +129,7 @@ function showApp() {
   // Gate nav links by permission
   const isAdmin = ['super_admin','farm_owner'].includes(currentUser?.role);
   const navGates = {
-    dashboard:   () => canAccess('dashboard'),
+    dashboard:   () => isAdmin || canAccess('dashboard'),
     expenditure: () => canAccess('expenditure'),
     settings:    () => isAdmin,
   };
@@ -158,8 +158,9 @@ function showAuth() {
 // ── Navigation ────────────────────────────────────────────────
 function navigateTo(section) {
   // Block access to gated sections if user lacks permission
+  const isAdmin = ['super_admin', 'farm_owner'].includes(currentUser?.role);
   const accessMap = { dashboard: 'dashboard', expenditure: 'expenditure' };
-  if (accessMap[section] && !canAccess(accessMap[section])) {
+  if (accessMap[section] && !isAdmin && !canAccess(accessMap[section])) {
     toast('You do not have permission to access this section.', 'error');
     return;
   }
@@ -195,9 +196,14 @@ async function loadFlock() {
     flockBatches = bd.batches;
     loadMortality();
 
-    const canEdit = currentUser?.role === 'super_admin' || currentUser?.role === 'farm_owner'
-      || currentUser?.role === 'farm_manager'
-      || (currentUser?.permissions?.flock?.edit);
+    const canCreate = canAccess('flock', 'create');
+    const canEdit   = canAccess('flock', 'edit');
+
+    // Show action buttons only when the user has the right permission
+    const show = (id, visible) => { const b = el(id); if (b) b.classList.toggle('hidden', !visible); };
+    show('btn-new-pen',       canCreate);
+    show('btn-record-deaths', canCreate);
+    show('btn-new-batch',     canCreate);
 
     tbody('batches-tbody', flockBatches, b => {
       const purposeColor = { layers:'b-green', broilers:'b-orange', breeders:'b-purple', dual_purpose:'b-cyan' };
