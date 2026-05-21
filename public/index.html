@@ -287,13 +287,22 @@
                   </div>
                   <div class="form-row" style="gap:14px">
                     <div class="form-group">
-                      <label>Eggs Collected <span style="color:#dc2626">*</span></label>
-                      <input type="number" name="eggs_collected" id="egg-collected" min="0" placeholder="e.g. 850" required oninput="calcLayingRate()"/>
+                      <label>Crates Collected <span style="color:#dc2626">*</span> <span style="font-weight:400;color:var(--gray-400);font-size:11px">(1 crate = 30 eggs)</span></label>
+                      <input type="number" id="egg-crates" min="0" placeholder="e.g. 28" oninput="calcEggsFromCrates()"/>
                     </div>
                     <div class="form-group">
-                      <label>Broken / Rejected</label>
-                      <input type="number" name="broken_eggs" id="egg-broken" min="0" value="0" placeholder="0" oninput="calcLayingRate()"/>
+                      <label>Loose Pieces</label>
+                      <input type="number" id="egg-loose" min="0" value="0" placeholder="0" oninput="calcEggsFromCrates()"/>
                     </div>
+                  </div>
+                  <div class="form-group">
+                    <label>Total Eggs <span style="color:#dc2626">*</span> <small style="color:var(--gray-400)">(auto-calculated)</small></label>
+                    <input type="number" name="eggs_collected" id="egg-collected" min="0" placeholder="0" required readonly
+                      style="background:var(--gray-50);font-weight:700;color:var(--green-700)" oninput="calcLayingRate()"/>
+                  </div>
+                  <div class="form-group">
+                    <label>Broken / Rejected <span style="font-weight:400;color:var(--gray-400);font-size:11px">(pieces)</span></label>
+                    <input type="number" name="broken_eggs" id="egg-broken" min="0" value="0" placeholder="0" oninput="calcLayingRate()"/>
                   </div>
 
                   <!-- Laying Rate Bar (shown when eggs entered) -->

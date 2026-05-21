@@ -428,6 +428,24 @@ function onEggBatchChange() {
   calcLayingRate();
 }
 
+const EGGS_PER_CRATE = 30;
+
+function calcEggsFromCrates() {
+  const crates = parseInt(el('egg-crates')?.value) || 0;
+  const loose  = parseInt(el('egg-loose')?.value)  || 0;
+  const total  = crates * EGGS_PER_CRATE + loose;
+  const inp = el('egg-collected');
+  if (inp) { inp.value = total; }
+  calcLayingRate();
+}
+
+function toCrates(pieces) {
+  const crates = Math.floor(pieces / EGGS_PER_CRATE);
+  const loose  = pieces % EGGS_PER_CRATE;
+  if (!pieces) return '—';
+  return crates > 0 ? `${crates} crate${crates>1?'s':''}${loose ? ` + ${loose}` : ''}` : `${loose} pcs`;
+}
+
 function calcLayingRate() {
   const collected = parseInt(el('egg-collected')?.value) || 0;
   const broken    = parseInt(el('egg-broken')?.value)    || 0;
@@ -524,8 +542,8 @@ async function loadEggs() {
   const todaySaleable = todayRecs.reduce((s, r) => s + ((+r.eggs_collected || 0) - (+r.broken_eggs || 0)), 0);
   const rates = _eggRecords.filter(r => r.laying_rate).map(r => +r.laying_rate);
   const avgRate = rates.length ? (rates.reduce((a, b) => a + b, 0) / rates.length).toFixed(1) : '—';
-  if (el('egg-stat-today'))    el('egg-stat-today').textContent    = todayEggs.toLocaleString();
-  if (el('egg-stat-saleable')) el('egg-stat-saleable').textContent = todaySaleable.toLocaleString();
+  if (el('egg-stat-today'))    el('egg-stat-today').textContent    = toCrates(todayEggs);
+  if (el('egg-stat-saleable')) el('egg-stat-saleable').textContent = toCrates(todaySaleable);
   if (el('egg-stat-rate'))     el('egg-stat-rate').textContent     = avgRate + (rates.length ? '%' : '');
 }
 
@@ -563,9 +581,9 @@ function renderEggsTable(records) {
             <td>${breed}</td>
             <td>${purposeLabel}</td>
             <td>${birdCount != null ? Number(birdCount).toLocaleString() : '—'}</td>
-            <td><strong>${collected.toLocaleString()}</strong></td>
+            <td><strong>${toCrates(collected)}</strong><br><small style="color:var(--gray-400)">${collected} pcs</small></td>
             <td>${broken}</td>
-            <td>${saleable.toLocaleString()}</td>
+            <td>${toCrates(saleable)}<br><small style="color:var(--gray-400)">${saleable} pcs</small></td>
             <td>${rateCell}</td>`;
   }, 10, 'No egg records yet — log your first collection');
 }
@@ -599,6 +617,9 @@ async function logEggs(form) {
   if (!data.notes) delete data.notes;
   await api('POST', '/eggs', data);
   form.reset();
+  // Reset crate/loose inputs
+  if (el('egg-crates')) el('egg-crates').value = '';
+  if (el('egg-loose'))  el('egg-loose').value  = '0';
   // Reset info panel back to placeholder state
   if (el('egg-info-placeholder')) el('egg-info-placeholder').style.display = 'block';
   if (el('egg-info-detail'))      el('egg-info-detail').style.display = 'none';
@@ -802,6 +823,7 @@ async function loadIncome() {
     const data = await api('GET', '/transactions/export?type=income&limit=50');
     const sColor = { approved:'b-green', pending:'b-yellow', rejected:'b-red', flagged:'b-orange' };
     tbody('income-tbody', data.transactions, t => {
+      _receiptMap[t.id] = t;
       const hasQty = t.sale_qty && t.sale_unit;
       return `<td>${fmtDate(t.transaction_date)}</td>
        <td>${t.category.replace(/_/g,' ')}</td>
@@ -810,7 +832,7 @@ async function loadIncome() {
        <td><strong class="amount-positive">GHS ${fmt(t.amount)}</strong></td>
        <td>${t.counterparty_name || '—'}</td>
        <td><span class="badge ${sColor[t.approval_status]||'b-gray'}">${t.approval_status}</span></td>
-       <td><button class="btn btn-outline btn-xs" onclick='printReceipt(${JSON.stringify(t)})'>🧾 Receipt</button></td>`;
+       <td><button class="btn btn-outline btn-xs" onclick="printReceipt(_receiptMap['${t.id}'])">🧾 Receipt</button></td>`;
     }, 8, 'No income recorded yet — add your first income entry');
   } catch (e) { toast(e.message, 'error'); }
 }
@@ -1599,6 +1621,7 @@ function clearAuditFilters() {
 const MONTH_NAMES = ['','January','February','March','April','May','June','July','August','September','October','November','December'];
 
 let _logoDataUrl = null; // holds the base64 data URL of the selected logo
+const _receiptMap = {}; // id → transaction object, avoids JSON injection in onclick
 
 function applyBranding(name, logoUrl) {
   const nameEl = el('header-farm-name');
