@@ -21,20 +21,25 @@ function escape(val) {
   return `'${str}'`;
 }
 
+const GENERATED_COLUMNS = {
+  egg_production_records: ['saleable_eggs'],
+  feed_transactions: ['bags_count', 'kg_per_bag'],
+};
+
 async function exportTable(client, table, out) {
   const { rows } = await client.query(`SELECT * FROM ${table} ORDER BY created_at ASC NULLS LAST`);
   if (rows.length === 0) {
     out.push(`-- ${table}: no data`);
     return;
   }
+  const skip = new Set(GENERATED_COLUMNS[table] || []);
   out.push(`\n-- ${table} (${rows.length} rows)`);
-  out.push(`ALTER TABLE ${table} DISABLE TRIGGER ALL;`);
   for (const row of rows) {
-    const cols = Object.keys(row).join(', ');
-    const vals = Object.values(row).map(escape).join(', ');
+    const entries = Object.entries(row).filter(([col]) => !skip.has(col));
+    const cols = entries.map(([col]) => col).join(', ');
+    const vals = entries.map(([, val]) => escape(val)).join(', ');
     out.push(`INSERT INTO ${table} (${cols}) VALUES (${vals}) ON CONFLICT DO NOTHING;`);
   }
-  out.push(`ALTER TABLE ${table} ENABLE TRIGGER ALL;`);
 }
 
 async function main() {
@@ -42,7 +47,6 @@ async function main() {
   const out = [
     '-- FarmIQ data migration — paste into Supabase SQL Editor',
     '-- Generated: ' + new Date().toISOString(),
-    '\nSET session_replication_role = replica; -- disable FK checks\n',
   ];
 
   // Order matters — respect foreign key dependencies
@@ -74,7 +78,6 @@ async function main() {
     }
   }
 
-  out.push('\nSET session_replication_role = DEFAULT; -- re-enable FK checks');
 
   const sql = out.join('\n');
   fs.writeFileSync('scripts/supabase_import.sql', sql);
