@@ -96,10 +96,11 @@ router.post('/daily-records',
     const { batch_id, record_date, mortalities = 0, culled = 0, sold = 0, notes } = req.body;
 
     // Get opening count from batch
-    const { rows: [batch] } = await pool.query(`SELECT current_count FROM batches WHERE id = $1 AND org_id = $2`, [batch_id, req.user.org_id]);
+    const { rows: [batch] } = await pool.query(`SELECT current_count, culled_count FROM batches WHERE id = $1 AND org_id = $2`, [batch_id, req.user.org_id]);
     if (!batch) return res.status(404).json({ error: 'Batch not found' });
 
-    const closing = batch.current_count - mortalities - culled - sold;
+    // Culled birds move to culled pen — NOT deducted from live count
+    const closing = batch.current_count - mortalities - sold;
 
     const { rows: [record] } = await pool.query(
       `INSERT INTO daily_flock_records (org_id, batch_id, record_date, opening_count, mortalities, culled, sold, closing_count, notes, recorded_by)
@@ -110,8 +111,11 @@ router.post('/daily-records',
       [req.user.org_id, batch_id, record_date, batch.current_count, mortalities, culled, sold, closing, notes||null, req.user.id]
     );
 
-    // Update batch current_count
-    await pool.query(`UPDATE batches SET current_count = $1, updated_at = NOW() WHERE id = $2`, [closing, batch_id]);
+    // Update live count (culled not deducted) and accumulate culled_count
+    await pool.query(
+      `UPDATE batches SET current_count = $1, culled_count = COALESCE(culled_count,0) + $2, updated_at = NOW() WHERE id = $3`,
+      [closing, culled, batch_id]
+    );
 
     res.status(201).json({ record });
   }
@@ -156,6 +160,22 @@ router.get('/pens', requirePermission('flock', 'view'), async (req, res) => {
     [req.user.org_id]
   );
   res.json({ pens: rows });
+});
+
+// GET /api/flock/culled-pen — virtual culled pen summary
+router.get('/culled-pen', requirePermission('flock', 'view'), async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT
+       COALESCE(SUM(culled_count), 0) AS total_culled,
+       COUNT(*) FILTER (WHERE culled_count > 0) AS batches_with_culled,
+       json_agg(json_build_object(
+         'batch_code', batch_code, 'breed', breed, 'culled_count', culled_count
+       ) ORDER BY culled_count DESC) FILTER (WHERE culled_count > 0) AS breakdown
+     FROM batches
+     WHERE org_id = $1 AND status NOT IN ('sold')`,
+    [req.user.org_id]
+  );
+  res.json({ culled_pen: rows[0] });
 });
 
 // POST /api/flock/pens

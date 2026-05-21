@@ -191,7 +191,7 @@ async function loadDashboard() {
 // ── Flock ─────────────────────────────────────────────────────
 async function loadFlock() {
   try {
-    const [bd, pd] = await Promise.all([api('GET', '/flock/batches'), api('GET', '/flock/pens')]);
+    const [bd, pd, cd] = await Promise.all([api('GET', '/flock/batches'), api('GET', '/flock/pens'), api('GET', '/flock/culled-pen')]);
     flockBatches = bd.batches;
     loadMortality();
 
@@ -215,6 +215,17 @@ async function loadFlock() {
               <td style="color:var(--gray-400);font-size:12px">${b.doc_date ? fmtDate(b.doc_date) : '—'}</td>`;
     }, 9, 'No batches yet — create your first batch');
 
+    // Inject virtual Culled Pen row
+    const cp = cd.culled_pen;
+    const culledRow = cp.total_culled > 0
+      ? `<tr style="background:#fef9ec">
+           <td><strong>🔴 Culled Pen</strong> <span class="badge b-orange" style="font-size:10px;margin-left:4px">virtual</span></td>
+           <td>—</td>
+           <td>culled</td>
+           <td>${cp.batches_with_culled || 0}</td>
+           <td><strong>${cp.total_culled}</strong></td>
+         </tr>`
+      : '';
     tbody('pens-tbody', pd.pens, p =>
       `<td><strong>${p.name}</strong></td>
        <td>${p.capacity}</td>
@@ -223,6 +234,11 @@ async function loadFlock() {
        <td>${p.total_birds || 0}</td>`,
       5, 'No pens yet — create your first pen'
     );
+    // Append the culled pen virtual row
+    if (culledRow) {
+      const tb = document.querySelector('#pens-tbody');
+      if (tb) tb.insertAdjacentHTML('beforeend', culledRow);
+    }
 
     el('batch-pen').innerHTML = '<option value="">No pen</option>' +
       pd.pens.map(p => `<option value="${p.id}">${p.name} (cap: ${p.capacity})</option>`).join('');
