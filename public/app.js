@@ -989,12 +989,11 @@ function calcIncomeAmount() {
   const price = parseFloat(el('income-unit-price')?.value) || 0;
   const total = qty && price ? qty * price : 0;
   const amtEl = el('income-amount');
-  const prev  = el('income-amount-preview');
+  const prev  = el('income-amount-preview-single');
   const unit  = el('income-unit')?.value || 'unit';
   if (total) {
     if (amtEl) amtEl.value = total.toFixed(2);
     if (prev) { prev.style.display = ''; prev.textContent = `${qty} ${unit}(s) × GHS ${price} = GHS ${fmt(total)}`; }
-    // Auto-fill description
     const descEl = el('income-desc');
     if (descEl && !descEl.dataset.userEdited) {
       const cat = (el('income-category')?.value || '').replace(/_/g,' ');
@@ -1068,6 +1067,7 @@ async function createIncome(form) {
   const container = el('egg-lines-container');
   if (container) container.innerHTML = '';
   el('income-amount-preview') && (el('income-amount-preview').style.display = 'none');
+  el('income-amount-preview-single') && (el('income-amount-preview-single').style.display = 'none');
   onIncomeCategoryChange();
   setToday();
   toast('Income recorded!');

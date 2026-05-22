@@ -723,3 +723,13 @@ input::placeholder { color: var(--gray-300); }
   .rpt-tabs { gap: 2px; }
   .rpt-tab { padding: 6px 8px; font-size: 11px; }
 }
+
+/* Income form responsive */
+@media (max-width: 768px) {
+  #section-income .income-form-grid-3 { grid-template-columns: 1fr 1fr !important; }
+}
+@media (max-width: 520px) {
+  #section-income .income-form-grid-3,
+  #section-income .income-form-grid-2 { grid-template-columns: 1fr !important; }
+  #sale-qty-row { grid-template-columns: 1fr !important; }
+}

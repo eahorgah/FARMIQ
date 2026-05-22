@@ -528,79 +528,42 @@
       <!-- ── INCOME ─────────────────────────────────────── -->
       <div id="section-income" class="section hidden">
         <div class="section-header">
-          <h2 class="section-title"><span class="section-icon icon-feed">📥</span> Record Income</h2>
+          <h2 class="section-title"><span class="section-icon icon-feed">📥</span> Income</h2>
         </div>
-        <div class="two-col">
-          <div class="card card-full">
-            <div class="card-title" style="margin-bottom:16px">New Income Entry</div>
+
+        <!-- ── Record New Income Card ── -->
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-header" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-bottom:1px solid #bbf7d0;border-radius:12px 12px 0 0;padding:16px 20px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:22px">💰</span>
+              <div>
+                <div style="font-weight:700;font-size:16px;color:#15803d">Record New Income</div>
+                <div style="font-size:12px;color:#6b7280;margin-top:1px">Fill in the details below to record a sale or income entry</div>
+              </div>
+            </div>
+          </div>
+          <div style="padding:20px">
             <form id="form-income">
-              <div class="form-group"><label>Income Category</label>
-                <select name="category" id="income-category" required onchange="onIncomeCategoryChange()">
-                  <option value="egg_sales">🥚 Egg Sales</option>
-                  <option value="broiler_sales">🐔 Broiler Sales</option>
-                  <option value="day_old_chick_sales">🐣 Day-old Chick Sales</option>
-                  <option value="layer_sales">🐓 Layer Sales</option>
-                  <option value="manure_sales">🌿 Manure Sales</option>
-                  <option value="other_income">💼 Other Income</option>
-                </select>
-              </div>
 
-              <!-- Product Sale Details (shown for product categories) -->
-              <div id="sale-details-block" class="card" style="background:var(--gray-50);border:1px solid var(--gray-200);padding:14px;border-radius:8px;margin-bottom:12px">
-                <div class="form-section-label" style="margin-bottom:10px">📦 Product Sale Details</div>
-
-                <!-- Multi-line egg type rows — shown only for egg sales -->
-                <div id="egg-lines-wrapper" style="display:none;margin-bottom:10px">
-                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-                    <label style="font-weight:600;margin:0;font-size:13px">Egg Types Sold</label>
-                    <button type="button" class="btn btn-outline btn-xs" onclick="addEggLine()">+ Add Type</button>
-                  </div>
-                  <div id="egg-lines-container"></div>
+              <!-- Row 1: Category + Date + Payment -->
+              <div class="income-form-grid-3" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
+                <div class="form-group" style="margin:0">
+                  <label>Income Category</label>
+                  <select name="category" id="income-category" required onchange="onIncomeCategoryChange()">
+                    <option value="egg_sales">🥚 Egg Sales</option>
+                    <option value="broiler_sales">🐔 Broiler Sales</option>
+                    <option value="day_old_chick_sales">🐣 Day-old Chick Sales</option>
+                    <option value="layer_sales">🐓 Layer Sales</option>
+                    <option value="manure_sales">🌿 Manure Sales</option>
+                    <option value="other_income">💼 Other Income</option>
+                  </select>
                 </div>
-
-                <!-- Batch selector -->
-                <div class="form-row">
-                  <div class="form-group">
-                    <label>Batch <small id="income-batch-hint" style="color:var(--gray-400)"></small></label>
-                    <select name="sale_batch_id" id="income-batch-select">
-                      <option value="">Select batch (optional for eggs)</option>
-                    </select>
-                    <span id="income-stock-hint" style="font-size:11px;color:var(--brand);margin-top:3px;display:block"></span>
-                  </div>
+                <div class="form-group" style="margin:0">
+                  <label>Date</label>
+                  <input type="date" name="transaction_date" required/>
                 </div>
-
-                <!-- Single qty/unit/price row — hidden for egg sales, shown for other products -->
-                <div class="form-row" id="sale-qty-row">
-                  <div class="form-group">
-                    <label>Quantity Sold</label>
-                    <input type="number" name="sale_quantity" id="income-qty" min="0.01" step="0.01" placeholder="e.g. 30" oninput="calcIncomeAmount()"/>
-                  </div>
-                  <div class="form-group">
-                    <label>Unit</label>
-                    <select name="sale_unit" id="income-unit">
-                      <option value="tray">Tray</option>
-                      <option value="crate">Crate</option>
-                      <option value="bird">Bird</option>
-                      <option value="chick">Chick</option>
-                      <option value="kg">Kg</option>
-                      <option value="bag">Bag</option>
-                    </select>
-                  </div>
-                  <div class="form-group">
-                    <label>Unit Price (GHS)</label>
-                    <input type="number" name="sale_unit_price" id="income-unit-price" min="0.01" step="0.01" placeholder="e.g. 20.00" oninput="calcIncomeAmount()"/>
-                  </div>
-                </div>
-                <div id="income-amount-preview" style="background:#f0fdf4;border-radius:6px;padding:8px 12px;font-size:13px;color:#15803d;font-weight:700;display:none;margin-top:4px"></div>
-              </div>
-
-              <div class="form-row">
-                <div class="form-group"><label>Total Amount (GHS)</label><input type="number" name="amount" id="income-amount" min="0.01" step="0.01" placeholder="0.00" required/></div>
-                <div class="form-group"><label>Date</label><input type="date" name="transaction_date" required/></div>
-              </div>
-              <div class="form-group"><label>Description</label><input type="text" name="description" id="income-desc" placeholder="e.g. Sold 30 trays of eggs to Ama Mensah" required oninput="this.dataset.userEdited='1'"/></div>
-              <div class="form-row">
-                <div class="form-group"><label>Payment Method</label>
+                <div class="form-group" style="margin:0">
+                  <label>Payment Method</label>
                   <select name="payment_method">
                     <option value="cash">💵 Cash</option>
                     <option value="mobile_money">📱 Mobile Money</option>
@@ -609,23 +572,104 @@
                     <option value="credit">💳 Credit</option>
                   </select>
                 </div>
-                <div class="form-group"><label>Buyer Name</label><input type="text" name="counterparty_name" placeholder="e.g. Ama Mensah"/></div>
               </div>
-              <div class="form-row">
-                <div class="form-group"><label>Buyer Phone</label><input type="tel" name="counterparty_phone" placeholder="+233..."/></div>
-                <div class="form-group"><label>Invoice / Receipt No.</label><input type="text" name="invoice_number" placeholder="Optional"/></div>
+
+              <!-- Product Sale Details (shown for product categories) -->
+              <div id="sale-details-block" style="background:var(--gray-50);border:1.5px solid #bbf7d0;padding:16px;border-radius:10px;margin-bottom:14px">
+                <div style="font-size:12px;font-weight:700;color:#15803d;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">📦 Product Sale Details</div>
+
+                <!-- Multi-line egg type rows — shown only for egg sales -->
+                <div id="egg-lines-wrapper" style="display:none;margin-bottom:12px">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                    <label style="font-weight:600;margin:0;font-size:13px;color:#374151">Egg Types Sold</label>
+                    <button type="button" class="btn btn-outline btn-xs" onclick="addEggLine()">+ Add Type</button>
+                  </div>
+                  <div id="egg-lines-container"></div>
+                  <div id="income-amount-preview" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:10px 14px;font-size:13px;color:#15803d;font-weight:600;display:none;margin-top:8px"></div>
+                </div>
+
+                <!-- Batch + single qty/unit/price (non-egg products) -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                  <div class="form-group" style="margin:0">
+                    <label>Batch <small id="income-batch-hint" style="color:var(--gray-400)"></small></label>
+                    <select name="sale_batch_id" id="income-batch-select">
+                      <option value="">Select batch (optional)</option>
+                    </select>
+                    <span id="income-stock-hint" style="font-size:11px;color:var(--brand);margin-top:3px;display:block"></span>
+                  </div>
+                  <div id="sale-qty-row" style="display:grid;grid-template-columns:1fr 0.8fr 1fr;gap:8px">
+                    <div class="form-group" style="margin:0">
+                      <label>Quantity</label>
+                      <input type="number" name="sale_quantity" id="income-qty" min="0.01" step="0.01" placeholder="e.g. 30" oninput="calcIncomeAmount()"/>
+                    </div>
+                    <div class="form-group" style="margin:0">
+                      <label>Unit</label>
+                      <select name="sale_unit" id="income-unit">
+                        <option value="tray">Tray</option>
+                        <option value="crate">Crate</option>
+                        <option value="bird">Bird</option>
+                        <option value="chick">Chick</option>
+                        <option value="kg">Kg</option>
+                        <option value="bag">Bag</option>
+                      </select>
+                    </div>
+                    <div class="form-group" style="margin:0">
+                      <label>Unit Price (GHS)</label>
+                      <input type="number" name="sale_unit_price" id="income-unit-price" min="0.01" step="0.01" placeholder="e.g. 20.00" oninput="calcIncomeAmount()"/>
+                    </div>
+                  </div>
+                </div>
+                <!-- preview for non-egg products -->
+                <div id="income-amount-preview-single" style="background:#f0fdf4;border-radius:6px;padding:8px 12px;font-size:13px;color:#15803d;font-weight:700;display:none;margin-top:10px"></div>
               </div>
+
+              <!-- Row 2: Amount + Description -->
+              <div class="income-form-grid-2" style="display:grid;grid-template-columns:1fr 2fr;gap:14px;margin-bottom:14px">
+                <div class="form-group" style="margin:0">
+                  <label>Total Amount (GHS)</label>
+                  <input type="number" name="amount" id="income-amount" min="0.01" step="0.01" placeholder="0.00" required style="font-size:18px;font-weight:700;color:#15803d"/>
+                </div>
+                <div class="form-group" style="margin:0">
+                  <label>Description</label>
+                  <input type="text" name="description" id="income-desc" placeholder="e.g. Sold 4 crates of jumbo eggs to Ama Mensah" required oninput="this.dataset.userEdited='1'"/>
+                </div>
+              </div>
+
+              <!-- Row 3: Buyer Name + Phone + Invoice -->
+              <div class="income-form-grid-3" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:18px">
+                <div class="form-group" style="margin:0">
+                  <label>Buyer Name <small style="color:var(--gray-400)">(optional)</small></label>
+                  <input type="text" name="counterparty_name" placeholder="e.g. Ama Mensah"/>
+                </div>
+                <div class="form-group" style="margin:0">
+                  <label>Buyer Phone <small style="color:var(--gray-400)">(optional)</small></label>
+                  <input type="tel" name="counterparty_phone" placeholder="+233..."/>
+                </div>
+                <div class="form-group" style="margin:0">
+                  <label>Invoice / Receipt No. <small style="color:var(--gray-400)">(optional)</small></label>
+                  <input type="text" name="invoice_number" placeholder="Optional"/>
+                </div>
+              </div>
+
               <input type="hidden" name="type" value="income"/>
-              <button type="submit" class="btn btn-primary btn-full" style="background:linear-gradient(135deg,#16a34a,#15803d)">💰 Record Income</button>
+              <div style="display:flex;justify-content:flex-end">
+                <button type="submit" class="btn btn-primary" style="background:linear-gradient(135deg,#16a34a,#15803d);padding:12px 36px;font-size:15px;font-weight:700;border-radius:10px">
+                  💰 Record Income
+                </button>
+              </div>
             </form>
           </div>
-          <div class="card">
-            <div class="card-header"><span class="card-title">Recent Income</span></div>
-            <table class="table">
-              <thead><tr><th>Date</th><th>Category</th><th>Egg Type</th><th>Qty / Unit</th><th>Unit Price</th><th>Amount</th><th>Buyer</th><th>Status</th><th></th></tr></thead>
-              <tbody id="income-tbody"></tbody>
-            </table>
+        </div>
+
+        <!-- ── Recent Income Table ── -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Recent Income</span>
           </div>
+          <table class="table">
+            <thead><tr><th>Date</th><th>Category</th><th>Egg Type</th><th>Qty / Unit</th><th>Unit Price</th><th>Amount</th><th>Buyer</th><th>Status</th><th></th></tr></thead>
+            <tbody id="income-tbody"></tbody>
+          </table>
         </div>
       </div>
 
