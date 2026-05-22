@@ -84,11 +84,11 @@ router.get('/export', requirePermission('transactions', 'view'), async (req, res
   if (date_to)   { conditions.push(`t.transaction_date <= $${i++}`);       values.push(date_to); }
 
   const { rows } = await pool.query(
-    `SELECT t.transaction_ref, t.type, t.category, t.amount, t.transaction_date,
+    `SELECT t.id, t.transaction_ref, t.type, t.category, t.amount, t.transaction_date,
             t.description, t.payment_method, t.counterparty_name,
             t.approval_status, t.invoice_number,
             b.batch_code,
-            sr.quantity AS sale_qty, sr.unit AS sale_unit, sr.unit_price AS sale_unit_price,
+            sr.quantity AS sale_qty, sr.unit AS sale_unit, sr.unit_price AS sale_unit_price, sr.egg_type AS sale_egg_type,
             u.full_name AS recorded_by
      FROM transactions t
      LEFT JOIN batches b     ON b.id = t.batch_id
@@ -161,8 +161,11 @@ router.post('/',
       payment_method = 'cash', batch_id, pen_id,
       counterparty_name, counterparty_phone, invoice_number,
       // Product sale fields
-      sale_quantity, sale_unit, sale_unit_price, sale_batch_id,
+      sale_quantity, sale_unit, sale_unit_price, sale_batch_id, egg_type,
     } = req.body;
+
+    const VALID_EGG_TYPES = ['jumbo', 'extra_large', 'large', 'medium', 'pullet'];
+    const saleEggType = VALID_EGG_TYPES.includes(egg_type) ? egg_type : null;
 
     const approvalStatus = 'pending';
 
@@ -196,12 +199,14 @@ router.post('/',
         await client.query(
           `INSERT INTO sales_records
              (org_id, transaction_id, sale_type, sale_date, batch_id, quantity, unit, unit_price,
-              total_amount, buyer_name, buyer_phone, recorded_by)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+              total_amount, buyer_name, buyer_phone, egg_type, recorded_by)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
           [
             req.user.org_id, tx.id, saleType, transaction_date, saleBatch,
             sale_quantity, sale_unit || 'unit', sale_unit_price, amount,
-            counterparty_name || null, counterparty_phone || null, req.user.id,
+            counterparty_name || null, counterparty_phone || null,
+            saleType === 'eggs' ? saleEggType : null,
+            req.user.id,
           ]
         );
 

@@ -548,6 +548,19 @@
               <!-- Product Sale Details (shown for product categories) -->
               <div id="sale-details-block" class="card" style="background:var(--gray-50);border:1px solid var(--gray-200);padding:14px;border-radius:8px;margin-bottom:12px">
                 <div class="form-section-label" style="margin-bottom:10px">📦 Product Sale Details</div>
+                <!-- Egg type selector — shown only for egg sales -->
+                <div class="form-group" id="egg-type-group" style="display:none">
+                  <label>Egg Type</label>
+                  <select name="egg_type" id="income-egg-type">
+                    <option value="">Select egg type</option>
+                    <option value="jumbo">Jumbo</option>
+                    <option value="extra_large">Extra Large</option>
+                    <option value="large">Large</option>
+                    <option value="medium">Medium</option>
+                    <option value="pullet">Pullet</option>
+                  </select>
+                  <span id="egg-stock-hint" style="font-size:11px;color:var(--brand);margin-top:3px;display:block"></span>
+                </div>
                 <div class="form-row">
                   <div class="form-group">
                     <label>Batch <small id="income-batch-hint" style="color:var(--gray-400)"></small></label>
@@ -609,7 +622,7 @@
           <div class="card">
             <div class="card-header"><span class="card-title">Recent Income</span></div>
             <table class="table">
-              <thead><tr><th>Date</th><th>Category</th><th>Qty / Unit</th><th>Unit Price</th><th>Amount</th><th>Buyer</th><th>Status</th><th></th></tr></thead>
+              <thead><tr><th>Date</th><th>Category</th><th>Egg Type</th><th>Qty / Unit</th><th>Unit Price</th><th>Amount</th><th>Buyer</th><th>Status</th><th></th></tr></thead>
               <tbody id="income-tbody"></tbody>
             </table>
           </div>

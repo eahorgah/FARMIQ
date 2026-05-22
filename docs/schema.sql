@@ -335,6 +335,7 @@ CREATE TABLE sales_records (
   total_amount    NUMERIC(14,2) NOT NULL,
   buyer_name      VARCHAR(200),
   buyer_phone     VARCHAR(20),
+  egg_type        VARCHAR(20) CHECK (egg_type IN ('jumbo','extra_large','large','medium','pullet')),
   notes           TEXT,
   recorded_by     UUID REFERENCES users(id),
   created_at      TIMESTAMPTZ DEFAULT NOW()

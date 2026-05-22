@@ -826,20 +826,48 @@ const PRODUCT_CATEGORIES  = ['egg_sales','broiler_sales','day_old_chick_sales','
 const BIRD_CATEGORIES     = ['broiler_sales','day_old_chick_sales','layer_sales'];
 const CATEGORY_UNIT_MAP   = { egg_sales:'tray', broiler_sales:'bird', day_old_chick_sales:'chick', layer_sales:'bird', manure_sales:'bag', other_income:'unit' };
 
-function onIncomeCategoryChange() {
+async function onIncomeCategoryChange() {
   const cat = el('income-category')?.value;
   const block = el('sale-details-block');
   if (!block) return;
   const isProduct = PRODUCT_CATEGORIES.includes(cat);
   block.style.display = isProduct ? '' : 'none';
 
+  // Show egg type dropdown only for egg sales
+  const eggTypeGroup = el('egg-type-group');
+  if (eggTypeGroup) eggTypeGroup.style.display = cat === 'egg_sales' ? '' : 'none';
+
+  // Fetch egg inventory and populate stock hints
+  if (cat === 'egg_sales') {
+    try {
+      const { inventory } = await api('GET', '/eggs/inventory');
+      const eggSel = el('income-egg-type');
+      const hint   = el('egg-stock-hint');
+      const byType = {};
+      inventory.forEach(r => { byType[r.egg_type] = r; });
+      if (eggSel) {
+        eggSel.innerHTML = '<option value="">Select egg type</option>' +
+          ['jumbo','extra_large','large','medium','pullet'].map(t => {
+            const inv = byType[t];
+            const avail = inv ? +inv.available : 0;
+            const label = t.replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
+            return `<option value="${t}" ${avail <= 0 ? 'disabled' : ''}>${label} — ${toCrates(avail)} available</option>`;
+          }).join('');
+        eggSel.onchange = () => {
+          const inv = byType[eggSel.value];
+          if (hint) hint.textContent = inv ? `Available: ${toCrates(+inv.available)} (${inv.available} pcs)` : '';
+        };
+      }
+    } catch { /* non-blocking */ }
+  }
+
   // Auto-set unit
   const unitSel = el('income-unit');
   if (unitSel && CATEGORY_UNIT_MAP[cat]) unitSel.value = CATEGORY_UNIT_MAP[cat];
 
   // Batch selector hint
-  const hint = el('income-batch-hint');
-  if (hint) hint.textContent = BIRD_CATEGORIES.includes(cat) ? '(required — birds deducted from batch)' : '(optional)';
+  const batchHint = el('income-batch-hint');
+  if (batchHint) batchHint.textContent = BIRD_CATEGORIES.includes(cat) ? '(required — birds deducted from batch)' : '(optional)';
 
   // Populate batch dropdown
   const batchSel = el('income-batch-select');
@@ -884,8 +912,10 @@ async function loadIncome() {
     tbody('income-tbody', data.transactions, t => {
       _receiptMap[t.id] = t;
       const hasQty = t.sale_qty && t.sale_unit;
+      const eggTypeLabel = t.sale_egg_type ? t.sale_egg_type.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) : '—';
       return `<td>${fmtDate(t.transaction_date)}</td>
        <td>${t.category.replace(/_/g,' ')}</td>
+       <td style="font-size:12px">${t.category === 'egg_sales' ? eggTypeLabel : '—'}</td>
        <td style="font-size:12px">${hasQty ? `${t.sale_qty} ${t.sale_unit}` : '—'}</td>
        <td style="font-size:12px">${t.sale_unit_price ? 'GHS '+fmt(t.sale_unit_price) : '—'}</td>
        <td><strong class="amount-positive">GHS ${fmt(t.amount)}</strong></td>

@@ -62,4 +62,32 @@ router.get('/', requirePermission('flock', 'view'), async (req, res) => {
   res.json({ records: rows });
 });
 
+// GET /api/eggs/inventory — available stock per egg type (collected minus sold)
+router.get('/inventory', requirePermission('flock', 'view'), async (req, res) => {
+  const { rows } = await pool.query(
+    `WITH collected AS (
+       SELECT egg_type, COALESCE(SUM(saleable_eggs), 0)::int AS total_collected
+       FROM egg_production_records
+       WHERE org_id = $1 AND egg_type IS NOT NULL
+       GROUP BY egg_type
+     ),
+     sold AS (
+       SELECT sr.egg_type, COALESCE(SUM(sr.quantity), 0)::int AS total_sold
+       FROM sales_records sr
+       JOIN transactions t ON t.id = sr.transaction_id
+       WHERE t.org_id = $1 AND sr.sale_type = 'eggs' AND sr.egg_type IS NOT NULL
+       GROUP BY sr.egg_type
+     )
+     SELECT c.egg_type,
+            c.total_collected                           AS collected,
+            COALESCE(s.total_sold, 0)                   AS sold,
+            c.total_collected - COALESCE(s.total_sold, 0) AS available
+     FROM collected c
+     LEFT JOIN sold s ON s.egg_type = c.egg_type
+     ORDER BY c.egg_type`,
+    [req.user.org_id]
+  );
+  res.json({ inventory: rows });
+});
+
 module.exports = router;
