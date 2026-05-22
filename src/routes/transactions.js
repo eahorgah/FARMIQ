@@ -37,7 +37,10 @@ router.get('/',
   if (date_from)       { conditions.push(`t.transaction_date >= $${i++}`); values.push(date_from); }
   if (date_to)         { conditions.push(`t.transaction_date <= $${i++}`); values.push(date_to); }
   if (batch_id)        { conditions.push(`t.batch_id = $${i++}`); values.push(batch_id); }
-  if (search)          { conditions.push(`(t.description ILIKE $${i} OR t.counterparty_name ILIKE $${i})`); values.push(`%${search}%`); i++; }
+  if (search) {
+    if (search.length > 100) return res.status(400).json({ error: 'Search term too long' });
+    conditions.push(`(t.description ILIKE $${i} OR t.counterparty_name ILIKE $${i})`); values.push(`%${search}%`); i++;
+  }
 
   // Finance officers see all; others see only their org
   // (org_id filter already applied above)

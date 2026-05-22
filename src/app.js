@@ -51,7 +51,8 @@ app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
     const clean = origin.replace(/\/$/, '');
-    if (allowedOrigins.includes(clean) || /\.vercel\.app$/.test(clean)) return callback(null, true);
+    const isVercelPreview = /^https:\/\/farmiq[a-z0-9-]*\.vercel\.app$/.test(clean);
+    if (allowedOrigins.includes(clean) || isVercelPreview) return callback(null, true);
     callback(new Error('CORS policy: origin not allowed'));
   },
   credentials: true,
@@ -74,10 +75,11 @@ const authLimiter = rateLimit({
 });
 app.use('/api/', limiter);
 app.use('/api/auth/', authLimiter);
+app.use('/api/auth/refresh', authLimiter); // extra guard on refresh endpoint
 
 // ── Body parsing ───────────────────────────────────────────
 app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+app.use(express.urlencoded({ extended: false, limit: '1mb' }));
 
 // ── Logging ────────────────────────────────────────────────
 app.use(morgan('combined'));
@@ -97,38 +99,6 @@ app.use('/api/settings',     settingsRoutes);
 
 app.get('/api/health-check', (req, res) => res.json({ status: 'ok', version: '1.0.0' }));
 
-app.get('/api/test-write', async (req, res) => {
-  const client = await pool.connect();
-  const steps = [];
-  try {
-    steps.push('connect ok');
-    await client.query('BEGIN');
-    steps.push('BEGIN ok');
-    const { rows: [org] } = await client.query(
-      `INSERT INTO organizations (name, slug) VALUES ($1, $2) RETURNING id`,
-      ['_test_org', '_test_' + Date.now()]
-    );
-    steps.push('INSERT org ok: ' + org.id);
-    await client.query('ROLLBACK');
-    steps.push('ROLLBACK ok');
-    res.json({ ok: true, steps });
-  } catch (err) {
-    try { await client.query('ROLLBACK'); } catch {}
-    res.json({ ok: false, steps, error: err.message, code: err.code });
-  } finally { client.release(); }
-});
-
-app.get('/api/debug-db', async (req, res) => {
-  try {
-    const [time, users] = await Promise.all([
-      pool.query('SELECT NOW() as time'),
-      pool.query('SELECT COUNT(*) as count, MAX(email) as sample_email FROM users'),
-    ]);
-    res.json({ ok: true, time: time.rows[0].time, user_count: users.rows[0].count, sample_email: users.rows[0].sample_email, node_env: process.env.NODE_ENV, has_jwt_secret: !!process.env.JWT_SECRET, has_jwt_refresh: !!process.env.JWT_REFRESH_SECRET, allowed_origins: process.env.ALLOWED_ORIGINS });
-  } catch (err) {
-    res.json({ ok: false, error: err.message, code: err.code, node_env: process.env.NODE_ENV });
-  }
-});
 
 app.get('/', (req, res) => {
   res.setHeader('Content-Type', 'text/html');

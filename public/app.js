@@ -1,5 +1,10 @@
 'use strict';
 
+// ── HTML escaping — prevents XSS when inserting user content into innerHTML ──
+function esc(str) {
+  return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+
 // ── State ─────────────────────────────────────────────────────
 let token        = localStorage.getItem('fiq_token');
 let currentUser  = JSON.parse(localStorage.getItem('fiq_user') || 'null');
@@ -1457,12 +1462,12 @@ function renderAlertCards(alerts) {
     <div class="alert-card ${sevClass[a.severity] || 'alert-info'} ${a.is_read ? 'alert-read' : ''}">
       <div class="alert-card-head">
         <span class="alert-sev-icon">${sevIcon[a.severity] || 'ℹ'}</span>
-        <div class="alert-card-title">${a.title}</div>
-        <span class="badge b-gray" style="font-size:10px;text-transform:uppercase">${a.category}</span>
+        <div class="alert-card-title">${esc(a.title)}</div>
+        <span class="badge b-gray" style="font-size:10px;text-transform:uppercase">${esc(a.category)}</span>
       </div>
-      <div class="alert-card-msg">${a.message}</div>
+      <div class="alert-card-msg">${esc(a.message)}</div>
       <div class="alert-card-foot">
-        <span style="color:var(--gray-400);font-size:11px">By ${a.created_by_name || '—'} · ${fmtDate(a.created_at)}</span>
+        <span style="color:var(--gray-400);font-size:11px">By ${esc(a.created_by_name || '—')} · ${fmtDate(a.created_at)}</span>
         ${!a.is_read
           ? `<button class="btn btn-outline btn-xs" onclick="markAlertRead('${a.id}')">✓ Mark read</button>`
           : '<span style="color:var(--gray-400);font-size:11px">✓ Read</span>'}
@@ -1477,9 +1482,9 @@ async function loadAllAlerts() {
     const sColor = { info:'b-blue', warning:'b-yellow', critical:'b-red' };
     tbody('alerts-history-tbody', data.alerts, a =>
       `<td style="font-size:12px;color:var(--gray-400)">${fmtDate(a.created_at)}</td>
-       <td><span class="badge ${sColor[a.severity]||'b-gray'}">${a.severity}</span></td>
-       <td style="font-weight:600;max-width:260px">${a.title}</td>
-       <td><span class="badge b-gray">${a.category}</span></td>
+       <td><span class="badge ${sColor[a.severity]||'b-gray'}">${esc(a.severity)}</span></td>
+       <td style="font-weight:600;max-width:260px">${esc(a.title)}</td>
+       <td><span class="badge b-gray">${esc(a.category)}</span></td>
        <td style="font-size:11px">${a.target_roles ? a.target_roles.join(', ') : 'All staff'}</td>
        <td style="text-align:center">${a.read_count || 0}</td>
        <td>${a.is_active ? '<span class="badge b-green">Active</span>' : '<span class="badge b-gray">Inactive</span>'}</td>
