@@ -468,10 +468,16 @@ const EGGS_PER_CRATE = 30;
 
 function calcEggsFromCrates() {
   const crates = parseInt(el('egg-crates')?.value) || 0;
-  const loose  = parseInt(el('egg-loose')?.value)  || 0;
-  const total  = crates * EGGS_PER_CRATE + loose;
+  const looseInput = el('egg-loose');
+  let loose = parseInt(looseInput?.value) || 0;
+  if (loose >= EGGS_PER_CRATE) {
+    loose = EGGS_PER_CRATE - 1;
+    if (looseInput) looseInput.value = loose;
+    toast('Pieces must be less than 30 — add a full crate instead', 'error');
+  }
+  const total = crates * EGGS_PER_CRATE + loose;
   const inp = el('egg-collected');
-  if (inp) { inp.value = total; }
+  if (inp) inp.value = total;
   calcLayingRate();
 }
 
