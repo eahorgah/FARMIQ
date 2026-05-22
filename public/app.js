@@ -901,7 +901,7 @@ function addEggLine() {
   if (!container) return;
   const row = document.createElement('div');
   row.className = 'egg-line-row';
-  row.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 1fr 1.2fr auto;gap:4px;align-items:start;margin-bottom:6px';
+  row.style.cssText = 'display:grid;grid-template-columns:2fr 1.5fr 1fr 1.5fr auto;gap:6px;align-items:start;margin-bottom:6px';
   row.innerHTML = `
     <div>
       <select class="egg-line-type" onchange="onEggLineTypeChange(this)" style="width:100%">
