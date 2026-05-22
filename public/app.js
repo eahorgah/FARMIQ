@@ -901,22 +901,34 @@ function addEggLine() {
   if (!container) return;
   const row = document.createElement('div');
   row.className = 'egg-line-row';
-  row.style.cssText = 'display:grid;grid-template-columns:2fr 1.5fr 1fr 1.5fr auto;gap:6px;align-items:start;margin-bottom:6px';
+  row.style.cssText = 'background:#fff;border:1px solid var(--gray-200);border-radius:7px;padding:10px;margin-bottom:8px;position:relative';
   row.innerHTML = `
-    <div>
+    <button type="button" onclick="removeEggLine(this)" style="position:absolute;top:6px;right:8px;background:none;border:none;color:#ef4444;cursor:pointer;font-size:18px;line-height:1;padding:0" title="Remove">×</button>
+    <div style="margin-bottom:8px">
+      <label style="font-size:12px;font-weight:600;color:var(--gray-600);margin-bottom:3px;display:block">Egg Type</label>
       <select class="egg-line-type" onchange="onEggLineTypeChange(this)" style="width:100%">
         <option value="">Select type</option>${_eggTypeOptions('')}
       </select>
-      <span class="egg-line-hint" style="font-size:11px;color:var(--brand);margin-top:2px;display:block"></span>
+      <span class="egg-line-hint" style="font-size:11px;color:var(--brand);margin-top:3px;display:block"></span>
     </div>
-    <input type="number" class="egg-line-qty" placeholder="Qty" min="0.01" step="0.01" oninput="calcEggLinesTotal()" style="width:100%"/>
-    <select class="egg-line-unit" style="width:100%">
-      <option value="tray">Tray</option>
-      <option value="crate">Crate</option>
-      <option value="pieces">Pieces</option>
-    </select>
-    <input type="number" class="egg-line-price" placeholder="Price" min="0.01" step="0.01" oninput="calcEggLinesTotal()" style="width:100%"/>
-    <button type="button" onclick="removeEggLine(this)" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:18px;line-height:1;padding:4px 2px" title="Remove">×</button>`;
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--gray-600);margin-bottom:3px;display:block">Quantity</label>
+        <input type="number" class="egg-line-qty" placeholder="e.g. 5" min="0.01" step="0.01" oninput="calcEggLinesTotal()" style="width:100%"/>
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--gray-600);margin-bottom:3px;display:block">Unit</label>
+        <select class="egg-line-unit" style="width:100%">
+          <option value="tray">Tray</option>
+          <option value="crate">Crate</option>
+          <option value="pieces">Pieces</option>
+        </select>
+      </div>
+    </div>
+    <div>
+      <label style="font-size:12px;font-weight:600;color:var(--gray-600);margin-bottom:3px;display:block">Unit Price (GHS)</label>
+      <input type="number" class="egg-line-price" placeholder="e.g. 20.00" min="0.01" step="0.01" oninput="calcEggLinesTotal()" style="width:100%"/>
+    </div>`;
   container.appendChild(row);
 }
 
