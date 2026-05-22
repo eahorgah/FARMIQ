@@ -229,6 +229,28 @@ async function loadFlock() {
               <td style="color:var(--gray-400);font-size:12px">${b.doc_date ? fmtDate(b.doc_date) : '—'}</td>`;
     }, 12, 'No batches yet — create your first batch');
 
+    // Totals row for batch table
+    if (flockBatches.length) {
+      const totalBirds = flockBatches.reduce((s, b) => s + (+b.current_count || 0), 0);
+      const totalDeaths = flockBatches.reduce((s, b) => s + (+b.total_mortalities || 0), 0);
+      const totalCulled = flockBatches.reduce((s, b) => s + (+b.total_culled || 0), 0);
+      const totalSold   = flockBatches.reduce((s, b) => s + (+b.total_sold || 0), 0);
+      const totalEggs7d = flockBatches.reduce((s, b) => s + (+b.eggs_last_7d || 0), 0);
+      const tb = el('batches-tbody');
+      if (tb) tb.insertAdjacentHTML('beforeend',
+        `<tr style="background:#f0fdf4;font-weight:700;border-top:2px solid #bbf7d0">
+           <td colspan="4" style="text-align:right;color:var(--gray-500)">TOTAL</td>
+           <td>${totalBirds.toLocaleString()}</td>
+           <td style="color:var(--red,#ef4444)">${totalDeaths.toLocaleString()}</td>
+           <td style="color:var(--orange,#f97316)">${totalCulled.toLocaleString()}</td>
+           <td style="color:var(--green,#22c55e)">${totalSold.toLocaleString()}</td>
+           <td colspan="3"></td>
+           <td>${totalEggs7d.toLocaleString()}</td>
+           <td></td>
+         </tr>`
+      );
+    }
+
     // Inject virtual Culled Pen row
     const cp = cd.culled_pen;
     const culledRow = cp.total_culled > 0
@@ -600,6 +622,23 @@ function renderEggsTable(records) {
             <td>${toCrates(saleable)}<br><small style="color:var(--gray-400)">${saleable} pcs</small></td>
             <td>${rateCell}</td>`;
   }, 10, 'No egg records yet — log your first collection');
+
+  // Totals row for eggs table
+  if (records && records.length) {
+    const totCollected = records.reduce((s, r) => s + (+r.eggs_collected || 0), 0);
+    const totBroken    = records.reduce((s, r) => s + (+r.broken_eggs   || 0), 0);
+    const totSaleable  = totCollected - totBroken;
+    const tb = el('eggs-tbody');
+    if (tb) tb.insertAdjacentHTML('beforeend',
+      `<tr style="background:#f0fdf4;font-weight:700;border-top:2px solid #bbf7d0">
+         <td colspan="6" style="text-align:right;color:var(--gray-500)">TOTAL</td>
+         <td><strong>${toCrates(totCollected)}</strong><br><small style="color:var(--gray-400)">${totCollected} pcs</small></td>
+         <td>${totBroken}</td>
+         <td>${toCrates(totSaleable)}<br><small style="color:var(--gray-400)">${totSaleable} pcs</small></td>
+         <td></td>
+       </tr>`
+    );
+  }
 }
 
 async function filterEggs() {
@@ -1379,6 +1418,23 @@ async function loadReports() {
        <td>${r.laying_rate ? `<span class="badge ${+r.laying_rate>=70?'b-green':+r.laying_rate>=50?'b-yellow':'b-red'}">${(+r.laying_rate).toFixed(1)}%</span>` : '—'}</td>`,
       7, 'No egg records in this period');
 
+    // Totals row for report eggs table
+    if (eggs.length) {
+      const rptTotCollected = eggs.reduce((s, r) => s + (+r.eggs_collected || 0), 0);
+      const rptTotBroken    = eggs.reduce((s, r) => s + (+r.broken_eggs   || 0), 0);
+      const rptTotSaleable  = eggs.reduce((s, r) => s + (+r.saleable_eggs || 0), 0);
+      const rptEggTb = el('rpt-eggs-tbody');
+      if (rptEggTb) rptEggTb.insertAdjacentHTML('beforeend',
+        `<tr style="background:#f0fdf4;font-weight:700;border-top:2px solid #bbf7d0">
+           <td colspan="3" style="text-align:right;color:var(--gray-500)">TOTAL</td>
+           <td>${toCrates(rptTotCollected)}<br><small style="color:var(--gray-400);font-weight:400">${rptTotCollected} pcs</small></td>
+           <td>${rptTotBroken}</td>
+           <td>${toCrates(rptTotSaleable)}<br><small style="color:var(--gray-400);font-weight:400">${rptTotSaleable} pcs</small></td>
+           <td></td>
+         </tr>`
+      );
+    }
+
     // ── Flock tab ──
     const batches = flockData.batches || [];
     const pColor  = { layers:'b-green', broilers:'b-orange', breeders:'b-purple', dual_purpose:'b-cyan' };
@@ -1393,6 +1449,19 @@ async function loadReports() {
        <td>${b.pen_name||'—'}</td>
        <td>${fmtDate(b.doc_date)}</td>`,
       8, 'No batches found');
+
+    // Totals row for report flock table
+    if (batches.length) {
+      const rptTotalBirds = batches.reduce((s, b) => s + (+b.current_count || 0), 0);
+      const rptTb = el('rpt-flock-tbody');
+      if (rptTb) rptTb.insertAdjacentHTML('beforeend',
+        `<tr style="background:#f0fdf4;font-weight:700;border-top:2px solid #bbf7d0">
+           <td colspan="4" style="text-align:right;color:var(--gray-500)">TOTAL</td>
+           <td>${rptTotalBirds.toLocaleString()}</td>
+           <td colspan="3"></td>
+         </tr>`
+      );
+    }
 
     // ── Health tab ──
     const health = healthData.records || [];
