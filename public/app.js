@@ -824,7 +824,7 @@ async function logFeedTx(form) {
 // ── Income Category Helpers ───────────────────────────────────
 const PRODUCT_CATEGORIES  = ['egg_sales','broiler_sales','day_old_chick_sales','layer_sales','manure_sales'];
 const BIRD_CATEGORIES     = ['broiler_sales','day_old_chick_sales','layer_sales'];
-const CATEGORY_UNIT_MAP   = { egg_sales:'tray', broiler_sales:'bird', day_old_chick_sales:'chick', layer_sales:'bird', manure_sales:'bag', other_income:'unit' };
+const CATEGORY_UNIT_MAP   = { egg_sales:'crate', broiler_sales:'bird', day_old_chick_sales:'chick', layer_sales:'bird', manure_sales:'bag', other_income:'unit' };
 
 let _eggInventory = {};
 
@@ -920,7 +920,7 @@ function addEggLine() {
         <label style="font-size:12px;font-weight:600;color:var(--gray-600);margin-bottom:3px;display:block">Unit</label>
         <select class="egg-line-unit" style="width:100%">
           <option value="tray">Tray</option>
-          <option value="crate">Crate</option>
+          <option value="crate" selected>Crate</option>
           <option value="pieces">Pieces</option>
         </select>
       </div>
@@ -1007,6 +1007,7 @@ function calcIncomeAmount() {
 // ── Income ────────────────────────────────────────────────────
 async function loadIncome() {
   await ensureBatches();
+  setIncomeReceiptNo();
   onIncomeCategoryChange(); // set initial state of sale block
   try {
     const data = await api('GET', '/transactions/export?type=income&limit=50');
@@ -1070,6 +1071,7 @@ async function createIncome(form) {
   el('income-amount-preview-single') && (el('income-amount-preview-single').style.display = 'none');
   onIncomeCategoryChange();
   setToday();
+  setIncomeReceiptNo();
   toast('Income recorded!');
   if (BIRD_CATEGORIES.includes(data.category)) toast('Bird count updated in batch', 'info');
   loadIncome();
@@ -2621,6 +2623,18 @@ function toast(msg, type = 'success') {
 function setToday() {
   const today = new Date().toISOString().split('T')[0];
   document.querySelectorAll('input[type=date]').forEach(i => { if (!i.value) i.value = today; });
+}
+
+function generateReceiptNo() {
+  const d = new Date();
+  const date = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  const rand = Math.random().toString(36).slice(2,6).toUpperCase();
+  return `REC-${date}-${rand}`;
+}
+
+function setIncomeReceiptNo() {
+  const f = el('income-invoice-number');
+  if (f) f.value = generateReceiptNo();
 }
 
 async function ensureBatches() {
