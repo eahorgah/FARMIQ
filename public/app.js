@@ -1015,7 +1015,12 @@ async function loadIncome() {
     tbody('income-tbody', data.transactions, t => {
       _receiptMap[t.id] = t;
       const hasQty = t.sale_qty && t.sale_unit;
-      const eggTypeLabel = t.sale_egg_type ? t.sale_egg_type.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) : '—';
+      const saleLines = Array.isArray(t.sale_lines) ? t.sale_lines : [];
+      const eggTypeLabel = t.category === 'egg_sales'
+        ? (saleLines.length > 1
+            ? `${saleLines.length} types`
+            : t.sale_egg_type ? t.sale_egg_type.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) : '—')
+        : '—';
       return `<td>${fmtDate(t.transaction_date)}</td>
        <td>${t.category.replace(/_/g,' ')}</td>
        <td style="font-size:12px">${t.category === 'egg_sales' ? eggTypeLabel : '—'}</td>
@@ -1346,18 +1351,34 @@ async function printReceipt(t) {
   const addressLines = [org.address, org.region, org.country].filter(Boolean).join(', ');
   const contactLines = [org.phone ? `Tel: ${org.phone}` : '', org.email ? `Email: ${org.email}` : ''].filter(Boolean).join('  |  ');
 
-  const hasQty = t.sale_qty && t.sale_unit && t.sale_unit_price;
-  const itemsHtml = hasQty
-    ? `<tr>
-         <td>${(t.category||'').replace(/_/g,' ')}</td>
-         <td style="text-align:center">${t.sale_qty} ${t.sale_unit}</td>
-         <td style="text-align:right">GHS ${fmt(t.sale_unit_price)}</td>
-         <td style="text-align:right"><strong>GHS ${fmt(t.amount)}</strong></td>
-       </tr>`
-    : `<tr>
-         <td colspan="3">${t.description}</td>
-         <td style="text-align:right"><strong>GHS ${fmt(t.amount)}</strong></td>
-       </tr>`;
+  // Build line items
+  let itemsHtml = '';
+  const lines = Array.isArray(t.sale_lines) ? t.sale_lines : [];
+  if (t.category === 'egg_sales' && lines.length > 0) {
+    lines.forEach(line => {
+      const label = (line.egg_type || 'egg').replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
+      const sub   = (+line.quantity) * (+line.unit_price);
+      itemsHtml += `<tr>
+        <td>${esc(label)} Eggs</td>
+        <td style="text-align:center">${line.quantity} ${esc(line.unit||'')}</td>
+        <td style="text-align:right">GHS ${fmt(line.unit_price)}</td>
+        <td style="text-align:right"><strong>GHS ${fmt(sub)}</strong></td>
+      </tr>`;
+    });
+  } else if (t.sale_qty && t.sale_unit && t.sale_unit_price) {
+    itemsHtml = `<tr>
+      <td>${esc((t.category||'').replace(/_/g,' '))}</td>
+      <td style="text-align:center">${t.sale_qty} ${esc(t.sale_unit)}</td>
+      <td style="text-align:right">GHS ${fmt(t.sale_unit_price)}</td>
+      <td style="text-align:right"><strong>GHS ${fmt(t.amount)}</strong></td>
+    </tr>`;
+  } else {
+    itemsHtml = `<tr>
+      <td colspan="3">${esc(t.description)}</td>
+      <td style="text-align:right"><strong>GHS ${fmt(t.amount)}</strong></td>
+    </tr>`;
+  }
+  const hasQty = lines.length > 0 || (t.sale_qty && t.sale_unit && t.sale_unit_price);
 
   const statusColor = { approved:'#16a34a', pending:'#d97706', rejected:'#dc2626' };
   const sColor = statusColor[t.approval_status] || '#6b7280';

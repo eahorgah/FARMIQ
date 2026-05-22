@@ -88,12 +88,27 @@ router.get('/export', requirePermission('transactions', 'view'), async (req, res
             t.description, t.payment_method, t.counterparty_name,
             t.approval_status, t.invoice_number,
             b.batch_code,
-            sr.quantity AS sale_qty, sr.unit AS sale_unit, sr.unit_price AS sale_unit_price, sr.egg_type AS sale_egg_type,
+            sr.sale_lines,
+            sr.sale_qty, sr.sale_unit, sr.sale_unit_price, sr.sale_egg_type,
             u.full_name AS recorded_by
      FROM transactions t
-     LEFT JOIN batches b     ON b.id = t.batch_id
-     LEFT JOIN sales_records sr ON sr.transaction_id = t.id
-     LEFT JOIN users u        ON u.id = t.created_by
+     LEFT JOIN batches b ON b.id = t.batch_id
+     LEFT JOIN (
+       SELECT transaction_id,
+         json_agg(json_build_object(
+           'quantity',   quantity,
+           'unit',       unit,
+           'unit_price', unit_price,
+           'egg_type',   egg_type
+         ) ORDER BY id) AS sale_lines,
+         MIN(quantity)   AS sale_qty,
+         MIN(unit)       AS sale_unit,
+         MIN(unit_price) AS sale_unit_price,
+         MIN(egg_type)   AS sale_egg_type
+       FROM sales_records
+       GROUP BY transaction_id
+     ) sr ON sr.transaction_id = t.id
+     LEFT JOIN users u ON u.id = t.created_by
      WHERE ${conditions.join(' AND ')}
      ORDER BY t.transaction_date DESC, t.created_at DESC
      LIMIT 5000`,
