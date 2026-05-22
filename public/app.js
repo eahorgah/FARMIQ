@@ -826,6 +826,8 @@ const PRODUCT_CATEGORIES  = ['egg_sales','broiler_sales','day_old_chick_sales','
 const BIRD_CATEGORIES     = ['broiler_sales','day_old_chick_sales','layer_sales'];
 const CATEGORY_UNIT_MAP   = { egg_sales:'tray', broiler_sales:'bird', day_old_chick_sales:'chick', layer_sales:'bird', manure_sales:'bag', other_income:'unit' };
 
+let _eggInventory = {};
+
 async function onIncomeCategoryChange() {
   const cat = el('income-category')?.value;
   const block = el('sale-details-block');
@@ -833,35 +835,29 @@ async function onIncomeCategoryChange() {
   const isProduct = PRODUCT_CATEGORIES.includes(cat);
   block.style.display = isProduct ? '' : 'none';
 
-  // Show egg type dropdown only for egg sales
-  const eggTypeGroup = el('egg-type-group');
-  if (eggTypeGroup) eggTypeGroup.style.display = cat === 'egg_sales' ? '' : 'none';
+  const isEggSale = cat === 'egg_sales';
 
-  // Fetch egg inventory and populate stock hints
-  if (cat === 'egg_sales') {
+  // Toggle egg-lines wrapper vs single qty row
+  const eggWrapper = el('egg-lines-wrapper');
+  const qtyRow     = el('sale-qty-row');
+  if (eggWrapper) eggWrapper.style.display = isEggSale ? '' : 'none';
+  if (qtyRow)     qtyRow.style.display     = isEggSale ? 'none' : '';
+
+  // Fetch inventory and seed first line for egg sales
+  if (isEggSale) {
     try {
       const { inventory } = await api('GET', '/eggs/inventory');
-      const eggSel = el('income-egg-type');
-      const hint   = el('egg-stock-hint');
-      const byType = {};
-      inventory.forEach(r => { byType[r.egg_type] = r; });
-      if (eggSel) {
-        eggSel.innerHTML = '<option value="">Select egg type</option>' +
-          ['jumbo','extra_large','large','medium','pullet'].map(t => {
-            const inv = byType[t];
-            const avail = inv ? +inv.available : 0;
-            const label = t.replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
-            return `<option value="${t}" ${avail <= 0 ? 'disabled' : ''}>${label} — ${toCrates(avail)} available</option>`;
-          }).join('');
-        eggSel.onchange = () => {
-          const inv = byType[eggSel.value];
-          if (hint) hint.textContent = inv ? `Available: ${toCrates(+inv.available)} (${inv.available} pcs)` : '';
-        };
-      }
-    } catch { /* non-blocking */ }
+      _eggInventory = {};
+      inventory.forEach(r => { _eggInventory[r.egg_type] = r; });
+    } catch { _eggInventory = {}; }
+    const container = el('egg-lines-container');
+    if (container && container.children.length === 0) addEggLine();
+    else refreshEggLineOptions();
+    calcEggLinesTotal();
+    return;
   }
 
-  // Auto-set unit
+  // Auto-set unit for non-egg products
   const unitSel = el('income-unit');
   if (unitSel && CATEGORY_UNIT_MAP[cat]) unitSel.value = CATEGORY_UNIT_MAP[cat];
 
@@ -879,6 +875,101 @@ async function onIncomeCategoryChange() {
       relevant.map(b => `<option value="${b.id}">${b.batch_code} — ${b.breed} (${b.current_count} birds)</option>`).join('');
   }
   calcIncomeAmount();
+}
+
+function _eggTypeOptions(selectedVal) {
+  return ['jumbo','extra_large','large','medium','pullet'].map(t => {
+    const inv   = _eggInventory[t];
+    const avail = inv ? +inv.available : 0;
+    const label = t.replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
+    const tag   = avail > 0 ? ` (${toCrates(avail)} avail)` : ' — out of stock';
+    return `<option value="${t}"${t === selectedVal ? ' selected' : ''}${avail <= 0 ? ' disabled' : ''}>${label}${tag}</option>`;
+  }).join('');
+}
+
+function refreshEggLineOptions() {
+  const container = el('egg-lines-container');
+  if (!container) return;
+  container.querySelectorAll('.egg-line-row').forEach(row => {
+    const sel = row.querySelector('.egg-line-type');
+    if (sel) sel.innerHTML = '<option value="">Select type</option>' + _eggTypeOptions(sel.value);
+  });
+}
+
+function addEggLine() {
+  const container = el('egg-lines-container');
+  if (!container) return;
+  const row = document.createElement('div');
+  row.className = 'egg-line-row';
+  row.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 1fr 1.2fr auto;gap:4px;align-items:start;margin-bottom:6px';
+  row.innerHTML = `
+    <div>
+      <select class="egg-line-type" onchange="onEggLineTypeChange(this)" style="width:100%">
+        <option value="">Select type</option>${_eggTypeOptions('')}
+      </select>
+      <span class="egg-line-hint" style="font-size:11px;color:var(--brand);margin-top:2px;display:block"></span>
+    </div>
+    <input type="number" class="egg-line-qty" placeholder="Qty" min="0.01" step="0.01" oninput="calcEggLinesTotal()" style="width:100%"/>
+    <select class="egg-line-unit" style="width:100%">
+      <option value="tray">Tray</option>
+      <option value="crate">Crate</option>
+      <option value="pieces">Pieces</option>
+    </select>
+    <input type="number" class="egg-line-price" placeholder="Price" min="0.01" step="0.01" oninput="calcEggLinesTotal()" style="width:100%"/>
+    <button type="button" onclick="removeEggLine(this)" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:18px;line-height:1;padding:4px 2px" title="Remove">×</button>`;
+  container.appendChild(row);
+}
+
+function onEggLineTypeChange(sel) {
+  const row  = sel.closest('.egg-line-row');
+  const hint = row?.querySelector('.egg-line-hint');
+  if (hint && sel.value) {
+    const inv = _eggInventory[sel.value];
+    hint.textContent = inv ? `Available: ${toCrates(+inv.available)} (${inv.available} pcs)` : 'No stock recorded';
+  } else if (hint) {
+    hint.textContent = '';
+  }
+  calcEggLinesTotal();
+}
+
+function removeEggLine(btn) {
+  const container = el('egg-lines-container');
+  if (!container || container.children.length <= 1) return;
+  btn.closest('.egg-line-row').remove();
+  calcEggLinesTotal();
+}
+
+function calcEggLinesTotal() {
+  const container = el('egg-lines-container');
+  if (!container) return;
+  let total = 0;
+  let lines  = '';
+  container.querySelectorAll('.egg-line-row').forEach(row => {
+    const type  = row.querySelector('.egg-line-type')?.value;
+    const qty   = parseFloat(row.querySelector('.egg-line-qty')?.value) || 0;
+    const unit  = row.querySelector('.egg-line-unit')?.value || '';
+    const price = parseFloat(row.querySelector('.egg-line-price')?.value) || 0;
+    const sub   = qty * price;
+    if (type && qty && price) {
+      const label = type.replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
+      lines += `<div style="margin-bottom:2px">${esc(label)}: ${qty} ${esc(unit)}(s) × GHS ${fmt(price)} = <strong>GHS ${fmt(sub)}</strong></div>`;
+      total += sub;
+    }
+  });
+  const amtEl  = el('income-amount');
+  const prevEl = el('income-amount-preview');
+  if (total) {
+    if (amtEl) amtEl.value = total.toFixed(2);
+    if (prevEl) {
+      prevEl.style.display = '';
+      prevEl.innerHTML = lines + `<div style="border-top:1px solid #bbf7d0;margin-top:4px;padding-top:4px">Total: <strong>GHS ${fmt(total)}</strong></div>`;
+    }
+    const descEl = el('income-desc');
+    if (descEl && !descEl.dataset.userEdited) descEl.value = 'Egg sales';
+  } else {
+    if (amtEl) amtEl.value = '';
+    if (prevEl) prevEl.style.display = 'none';
+  }
 }
 
 function calcIncomeAmount() {
@@ -930,20 +1021,41 @@ async function createIncome(form) {
   const data = fdata(form);
   data.amount = parseFloat(data.amount);
   data.type   = 'income';
-  if (data.sale_quantity)  data.sale_quantity  = parseFloat(data.sale_quantity);
-  if (data.sale_unit_price) data.sale_unit_price = parseFloat(data.sale_unit_price);
-  if (!data.sale_quantity || !data.sale_unit_price) { delete data.sale_quantity; delete data.sale_unit_price; delete data.sale_unit; }
+
+  if (data.category === 'egg_sales') {
+    // Collect multi-line egg types
+    const container = el('egg-lines-container');
+    const eggLines  = [];
+    if (container) {
+      container.querySelectorAll('.egg-line-row').forEach(row => {
+        const egg_type   = row.querySelector('.egg-line-type')?.value;
+        const quantity   = parseFloat(row.querySelector('.egg-line-qty')?.value);
+        const unit       = row.querySelector('.egg-line-unit')?.value || 'tray';
+        const unit_price = parseFloat(row.querySelector('.egg-line-price')?.value);
+        if (egg_type && quantity > 0 && unit_price > 0) eggLines.push({ egg_type, quantity, unit, unit_price });
+      });
+    }
+    if (eggLines.length === 0) { toast('Add at least one egg type with quantity and price', 'error'); return; }
+    data.egg_lines = eggLines;
+    delete data.sale_quantity; delete data.sale_unit_price; delete data.sale_unit; delete data.egg_type;
+  } else {
+    if (data.sale_quantity)   data.sale_quantity   = parseFloat(data.sale_quantity);
+    if (data.sale_unit_price) data.sale_unit_price = parseFloat(data.sale_unit_price);
+    if (!data.sale_quantity || !data.sale_unit_price) { delete data.sale_quantity; delete data.sale_unit_price; delete data.sale_unit; }
+  }
+
   if (!data.sale_batch_id) delete data.sale_batch_id;
   if (!data.counterparty_name) delete data.counterparty_name;
-  const res = await api('POST', '/transactions', data);
+  await api('POST', '/transactions', data);
   form.reset();
+  const container = el('egg-lines-container');
+  if (container) container.innerHTML = '';
   el('income-amount-preview') && (el('income-amount-preview').style.display = 'none');
   onIncomeCategoryChange();
   setToday();
   toast('Income recorded!');
   if (BIRD_CATEGORIES.includes(data.category)) toast('Bird count updated in batch', 'info');
   loadIncome();
-  // Refresh flock so updated bird count shows immediately
   if (BIRD_CATEGORIES.includes(data.category)) { flockBatches = []; }
 }
 

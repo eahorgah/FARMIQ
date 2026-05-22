@@ -162,6 +162,8 @@ router.post('/',
       counterparty_name, counterparty_phone, invoice_number,
       // Product sale fields
       sale_quantity, sale_unit, sale_unit_price, sale_batch_id, egg_type,
+      // Multi-line egg sales
+      egg_lines,
     } = req.body;
 
     const VALID_EGG_TYPES = ['jumbo', 'extra_large', 'large', 'medium', 'pullet'];
@@ -192,9 +194,32 @@ router.post('/',
 
       // ── Product sale: write sales_records + deduct from batch ──
       const SALE_CATEGORIES = { egg_sales: 'eggs', broiler_sales: 'broilers', day_old_chick_sales: 'chicks', layer_sales: 'layers', manure_sales: 'other' };
-      if (type === 'income' && sale_quantity && sale_unit_price && SALE_CATEGORIES[category]) {
-        const saleType  = SALE_CATEGORIES[category];
-        const saleBatch = sale_batch_id || batch_id || null;
+      const saleBatch = sale_batch_id || batch_id || null;
+
+      if (type === 'income' && category === 'egg_sales' && Array.isArray(egg_lines) && egg_lines.length > 0) {
+        // Multi-line egg sale — one sales_record per egg type
+        for (const line of egg_lines) {
+          const lineEggType = VALID_EGG_TYPES.includes(line.egg_type) ? line.egg_type : null;
+          const lineQty     = parseFloat(line.quantity) || 0;
+          const linePrice   = parseFloat(line.unit_price) || 0;
+          if (!lineQty || !linePrice) continue;
+          await client.query(
+            `INSERT INTO sales_records
+               (org_id, transaction_id, sale_type, sale_date, batch_id, quantity, unit, unit_price,
+                total_amount, buyer_name, buyer_phone, egg_type, recorded_by)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+            [
+              req.user.org_id, tx.id, 'eggs', transaction_date, saleBatch,
+              lineQty, line.unit || 'tray', linePrice, lineQty * linePrice,
+              counterparty_name || null, counterparty_phone || null,
+              lineEggType,
+              req.user.id,
+            ]
+          );
+        }
+      } else if (type === 'income' && sale_quantity && sale_unit_price && SALE_CATEGORIES[category]) {
+        // Single-line product sale (non-egg categories or legacy single-type egg sale)
+        const saleType = SALE_CATEGORIES[category];
 
         await client.query(
           `INSERT INTO sales_records

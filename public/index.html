@@ -548,19 +548,24 @@
               <!-- Product Sale Details (shown for product categories) -->
               <div id="sale-details-block" class="card" style="background:var(--gray-50);border:1px solid var(--gray-200);padding:14px;border-radius:8px;margin-bottom:12px">
                 <div class="form-section-label" style="margin-bottom:10px">📦 Product Sale Details</div>
-                <!-- Egg type selector — shown only for egg sales -->
-                <div class="form-group" id="egg-type-group" style="display:none">
-                  <label>Egg Type</label>
-                  <select name="egg_type" id="income-egg-type">
-                    <option value="">Select egg type</option>
-                    <option value="jumbo">Jumbo</option>
-                    <option value="extra_large">Extra Large</option>
-                    <option value="large">Large</option>
-                    <option value="medium">Medium</option>
-                    <option value="pullet">Pullet</option>
-                  </select>
-                  <span id="egg-stock-hint" style="font-size:11px;color:var(--brand);margin-top:3px;display:block"></span>
+
+                <!-- Multi-line egg type rows — shown only for egg sales -->
+                <div id="egg-lines-wrapper" style="display:none;margin-bottom:10px">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                    <label style="font-weight:600;margin:0;font-size:13px">Egg Types Sold</label>
+                    <button type="button" class="btn btn-outline btn-xs" onclick="addEggLine()">+ Add Type</button>
+                  </div>
+                  <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1.2fr auto;gap:4px;margin-bottom:4px;padding:0 2px">
+                    <span style="font-size:11px;color:var(--gray-500);font-weight:600">Type</span>
+                    <span style="font-size:11px;color:var(--gray-500);font-weight:600">Qty</span>
+                    <span style="font-size:11px;color:var(--gray-500);font-weight:600">Unit</span>
+                    <span style="font-size:11px;color:var(--gray-500);font-weight:600">Unit Price</span>
+                    <span></span>
+                  </div>
+                  <div id="egg-lines-container"></div>
                 </div>
+
+                <!-- Batch selector -->
                 <div class="form-row">
                   <div class="form-group">
                     <label>Batch <small id="income-batch-hint" style="color:var(--gray-400)"></small></label>
@@ -570,7 +575,9 @@
                     <span id="income-stock-hint" style="font-size:11px;color:var(--brand);margin-top:3px;display:block"></span>
                   </div>
                 </div>
-                <div class="form-row">
+
+                <!-- Single qty/unit/price row — hidden for egg sales, shown for other products -->
+                <div class="form-row" id="sale-qty-row">
                   <div class="form-group">
                     <label>Quantity Sold</label>
                     <input type="number" name="sale_quantity" id="income-qty" min="0.01" step="0.01" placeholder="e.g. 30" oninput="calcIncomeAmount()"/>
