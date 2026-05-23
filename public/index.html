@@ -890,7 +890,28 @@
         <!-- Transactions tab -->
         <div id="rpt-tab-transactions" class="rpt-panel hidden">
           <div class="card">
-            <div class="card-header"><span class="card-title">All Transactions</span><span id="rpt-tx-count" style="font-size:12px;color:var(--gray-400)"></span></div>
+            <div class="card-header">
+              <span class="card-title">All Transactions</span>
+              <span id="rpt-tx-count" style="font-size:12px;color:var(--gray-400)"></span>
+            </div>
+            <div class="rpt-filter-bar">
+              <select id="rpt-tx-type" onchange="filterReportTab('transactions')">
+                <option value="">All Types</option>
+                <option value="income">Income</option>
+                <option value="expense">Expense</option>
+              </select>
+              <select id="rpt-tx-category" onchange="filterReportTab('transactions')">
+                <option value="">All Categories</option>
+              </select>
+              <select id="rpt-tx-status" onchange="filterReportTab('transactions')">
+                <option value="">All Statuses</option>
+                <option value="approved">Approved</option>
+                <option value="pending">Pending</option>
+                <option value="rejected">Rejected</option>
+                <option value="flagged">Flagged</option>
+              </select>
+              <button class="btn btn-outline btn-xs" onclick="clearRptFilter('transactions')">Clear</button>
+            </div>
             <table class="table">
               <thead><tr><th>Date</th><th>Ref</th><th>Type</th><th>Category</th><th>Description</th><th>Counterparty</th><th>Payment</th><th>Amount (GHS)</th><th>Status</th></tr></thead>
               <tbody id="rpt-tx-tbody"></tbody>
@@ -901,7 +922,24 @@
         <!-- Eggs tab -->
         <div id="rpt-tab-eggs" class="rpt-panel hidden">
           <div class="card">
-            <div class="card-header"><span class="card-title">Egg Production Records</span><span id="rpt-eggs-count" style="font-size:12px;color:var(--gray-400)"></span></div>
+            <div class="card-header">
+              <span class="card-title">Egg Production Records</span>
+              <span id="rpt-eggs-count" style="font-size:12px;color:var(--gray-400)"></span>
+            </div>
+            <div class="rpt-filter-bar">
+              <select id="rpt-eggs-batch" onchange="filterReportTab('eggs')">
+                <option value="">All Batches</option>
+              </select>
+              <select id="rpt-eggs-type" onchange="filterReportTab('eggs')">
+                <option value="">All Egg Types</option>
+                <option value="jumbo">Jumbo</option>
+                <option value="extra_large">Extra Large</option>
+                <option value="large">Large</option>
+                <option value="medium">Medium</option>
+                <option value="pullet">Pullet</option>
+              </select>
+              <button class="btn btn-outline btn-xs" onclick="clearRptFilter('eggs')">Clear</button>
+            </div>
             <table class="table">
               <thead><tr><th>Date</th><th>Batch</th><th>Egg Type</th><th>Collected</th><th>Broken</th><th>Saleable</th><th>Lay Rate</th></tr></thead>
               <tbody id="rpt-eggs-tbody"></tbody>
@@ -913,6 +951,26 @@
         <div id="rpt-tab-flock" class="rpt-panel hidden">
           <div class="card">
             <div class="card-header"><span class="card-title">Flock &amp; Batch Status</span></div>
+            <div class="rpt-filter-bar">
+              <select id="rpt-flock-purpose" onchange="filterReportTab('flock')">
+                <option value="">All Purposes</option>
+                <option value="layers">Layers</option>
+                <option value="broilers">Broilers</option>
+                <option value="breeders">Breeders</option>
+                <option value="dual_purpose">Dual Purpose</option>
+              </select>
+              <select id="rpt-flock-status" onchange="filterReportTab('flock')">
+                <option value="">All Statuses</option>
+                <option value="brooding">Brooding</option>
+                <option value="growing">Growing</option>
+                <option value="laying">Laying</option>
+                <option value="peak_lay">Peak Lay</option>
+                <option value="declining">Declining</option>
+                <option value="sold">Sold</option>
+                <option value="culled">Culled</option>
+              </select>
+              <button class="btn btn-outline btn-xs" onclick="clearRptFilter('flock')">Clear</button>
+            </div>
             <table class="table">
               <thead><tr><th>Batch Code</th><th>Breed</th><th>Purpose</th><th>Status</th><th>Current Count</th><th>Age (Wks)</th><th>Pen</th><th>DOC Date</th></tr></thead>
               <tbody id="rpt-flock-tbody"></tbody>
@@ -923,7 +981,28 @@
         <!-- Health tab -->
         <div id="rpt-tab-health" class="rpt-panel hidden">
           <div class="card">
-            <div class="card-header"><span class="card-title">Health Records</span><span id="rpt-health-count" style="font-size:12px;color:var(--gray-400)"></span></div>
+            <div class="card-header">
+              <span class="card-title">Health Records</span>
+              <span id="rpt-health-count" style="font-size:12px;color:var(--gray-400)"></span>
+            </div>
+            <div class="rpt-filter-bar">
+              <select id="rpt-health-type" onchange="filterReportTab('health')">
+                <option value="">All Event Types</option>
+                <option value="disease">Disease</option>
+                <option value="vaccination">Vaccination</option>
+                <option value="treatment">Treatment</option>
+                <option value="injury">Injury</option>
+                <option value="biosecurity">Biosecurity</option>
+              </select>
+              <select id="rpt-health-severity" onchange="filterReportTab('health')">
+                <option value="">All Severities</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="critical">Critical</option>
+              </select>
+              <button class="btn btn-outline btn-xs" onclick="clearRptFilter('health')">Clear</button>
+            </div>
             <table class="table">
               <thead><tr><th>Date</th><th>Batch</th><th>Event Type</th><th>Diagnosis</th><th>Severity</th><th>Affected</th><th>Mortality</th><th>Status</th><th>Vet</th></tr></thead>
               <tbody id="rpt-health-tbody"></tbody>
@@ -934,7 +1013,22 @@
         <!-- Feed tab -->
         <div id="rpt-tab-feed" class="rpt-panel hidden">
           <div class="card">
-            <div class="card-header"><span class="card-title">Feed Transactions</span><span id="rpt-feed-count" style="font-size:12px;color:var(--gray-400)"></span></div>
+            <div class="card-header">
+              <span class="card-title">Feed Transactions</span>
+              <span id="rpt-feed-count" style="font-size:12px;color:var(--gray-400)"></span>
+            </div>
+            <div class="rpt-filter-bar">
+              <select id="rpt-feed-type" onchange="filterReportTab('feed')">
+                <option value="">All Feed Types</option>
+              </select>
+              <select id="rpt-feed-txtype" onchange="filterReportTab('feed')">
+                <option value="">All Transactions</option>
+                <option value="purchase">Purchase</option>
+                <option value="usage">Usage</option>
+                <option value="adjustment">Adjustment</option>
+              </select>
+              <button class="btn btn-outline btn-xs" onclick="clearRptFilter('feed')">Clear</button>
+            </div>
             <table class="table">
               <thead><tr><th>Date</th><th>Feed Type</th><th>Transaction</th><th>Quantity (kg)</th><th>Cost (GHS)</th><th>Batch</th><th>Recorded By</th></tr></thead>
               <tbody id="rpt-feed-tbody"></tbody>

@@ -1676,7 +1676,169 @@ async function loadReports() {
        <td>${r.recorded_by_name||'—'}</td>`,
       7, 'No feed transactions');
 
+    // Populate dynamic filter dropdowns from loaded data
+    const txCategories = [...new Set(txs.map(r => r.category).filter(Boolean))].sort();
+    const txCatSel = el('rpt-tx-category');
+    if (txCatSel) {
+      const cur = txCatSel.value;
+      txCatSel.innerHTML = '<option value="">All Categories</option>' +
+        txCategories.map(c => `<option value="${c}"${c===cur?' selected':''}>${c.replace(/_/g,' ')}</option>`).join('');
+    }
+    const feedTypes = [...new Set((feedData.transactions||[]).map(r => r.feed_type).filter(Boolean))].sort();
+    const feedTypeSel = el('rpt-feed-type');
+    if (feedTypeSel) {
+      feedTypeSel.innerHTML = '<option value="">All Feed Types</option>' +
+        feedTypes.map(t => `<option value="${t}">${t}</option>`).join('');
+    }
+    const eggBatches = [...new Set((eggsData.records||[]).map(r => r.batch_code).filter(Boolean))].sort();
+    const eggBatchSel = el('rpt-eggs-batch');
+    if (eggBatchSel) {
+      eggBatchSel.innerHTML = '<option value="">All Batches</option>' +
+        eggBatches.map(b => `<option value="${b}">${b}</option>`).join('');
+    }
+
   } catch (e) { toast(e.message, 'error'); }
+}
+
+function filterReportTab(tab) {
+  if (!_reportSnapshot) return;
+  const { txData, eggsData, flockData, healthData, feedData } = _reportSnapshot;
+  const sColor = { approved:'b-green', pending:'b-yellow', rejected:'b-red', flagged:'b-orange' };
+  const tColor = { income:'b-green', expense:'b-red' };
+  const etColors = { jumbo:'b-purple', extra_large:'b-blue', large:'b-cyan', medium:'b-green', pullet:'b-yellow' };
+  const etLabels = { jumbo:'Jumbo', extra_large:'Extra Large', large:'Large', medium:'Medium', pullet:'Pullet' };
+  const pColor   = { layers:'b-green', broilers:'b-orange', breeders:'b-purple', dual_purpose:'b-cyan' };
+  const stColor  = { brooding:'b-blue', growing:'b-cyan', laying:'b-green', peak_lay:'b-green', declining:'b-yellow', sold:'b-gray', culled:'b-gray' };
+  const sevColor = { low:'b-green', medium:'b-yellow', high:'b-orange', critical:'b-red' };
+  const staColor = { completed:'b-green', ongoing:'b-orange', monitoring:'b-blue' };
+
+  if (tab === 'transactions') {
+    const type   = el('rpt-tx-type')?.value   || '';
+    const cat    = el('rpt-tx-category')?.value || '';
+    const status = el('rpt-tx-status')?.value  || '';
+    let rows = txData.transactions || [];
+    if (type)   rows = rows.filter(r => r.type === type);
+    if (cat)    rows = rows.filter(r => r.category === cat);
+    if (status) rows = rows.filter(r => r.approval_status === status);
+    if (el('rpt-tx-count')) el('rpt-tx-count').textContent = `${rows.length} records`;
+    tbody('rpt-tx-tbody', rows, r =>
+      `<td>${fmtDate(r.transaction_date)}</td>
+       <td><span class="code">${r.transaction_ref||'—'}</span></td>
+       <td><span class="badge ${tColor[r.type]||'b-gray'}">${r.type}</span></td>
+       <td>${(r.category||'').replace(/_/g,' ')}</td>
+       <td style="max-width:200px">${r.description||'—'}</td>
+       <td>${r.counterparty_name||'—'}</td>
+       <td>${r.payment_method||'—'}</td>
+       <td style="font-weight:700;color:${r.type==='income'?'#15803d':'#b91c1c'}">GHS ${fmt(r.amount)}</td>
+       <td><span class="badge ${sColor[r.approval_status]||'b-gray'}">${r.approval_status||'—'}</span></td>`,
+      9, 'No transactions match this filter');
+  }
+
+  if (tab === 'eggs') {
+    const batch   = el('rpt-eggs-batch')?.value || '';
+    const eggType = el('rpt-eggs-type')?.value  || '';
+    let rows = eggsData.records || [];
+    if (batch)   rows = rows.filter(r => r.batch_code === batch);
+    if (eggType) rows = rows.filter(r => r.egg_type   === eggType);
+    if (el('rpt-eggs-count')) el('rpt-eggs-count').textContent = `${rows.length} records`;
+    tbody('rpt-eggs-tbody', rows, r =>
+      `<td>${fmtDate(r.record_date)}</td>
+       <td><strong>${r.batch_code||'—'}</strong></td>
+       <td>${r.egg_type ? `<span class="badge ${etColors[r.egg_type]||'b-gray'}">${etLabels[r.egg_type]||r.egg_type}</span>` : '—'}</td>
+       <td>${(+r.eggs_collected||0).toLocaleString()}</td>
+       <td>${+r.broken_eggs||0}</td>
+       <td>${(+r.saleable_eggs||0).toLocaleString()}</td>
+       <td>${r.laying_rate ? `<span class="badge ${+r.laying_rate>=70?'b-green':+r.laying_rate>=50?'b-yellow':'b-red'}">${(+r.laying_rate).toFixed(1)}%</span>` : '—'}</td>`,
+      7, 'No egg records match this filter');
+    if (rows.length) {
+      const tb = el('rpt-eggs-tbody');
+      if (tb) tb.insertAdjacentHTML('beforeend',
+        `<tr style="background:#f0fdf4;font-weight:700;border-top:2px solid #bbf7d0">
+           <td colspan="3" style="text-align:right;color:var(--gray-500)">TOTAL</td>
+           <td>${toCrates(rows.reduce((s,r)=>s+(+r.eggs_collected||0),0))}</td>
+           <td>${rows.reduce((s,r)=>s+(+r.broken_eggs||0),0)}</td>
+           <td>${toCrates(rows.reduce((s,r)=>s+(+r.saleable_eggs||0),0))}</td>
+           <td></td>
+         </tr>`);
+    }
+  }
+
+  if (tab === 'flock') {
+    const purpose = el('rpt-flock-purpose')?.value || '';
+    const status  = el('rpt-flock-status')?.value  || '';
+    let rows = flockData.batches || [];
+    if (purpose) rows = rows.filter(b => b.purpose === purpose);
+    if (status)  rows = rows.filter(b => b.status  === status);
+    tbody('rpt-flock-tbody', rows, b =>
+      `<td><span class="code">${b.batch_code}</span></td>
+       <td>${b.breed||'—'}</td>
+       <td><span class="badge ${pColor[b.purpose]||'b-gray'}">${(b.purpose||'').replace(/_/g,' ')}</span></td>
+       <td><span class="badge ${stColor[b.status]||'b-gray'}">${b.status||'—'}</span></td>
+       <td><strong>${(+b.current_count||0).toLocaleString()}</strong></td>
+       <td>${b.age_weeks != null ? Math.round(b.age_weeks)+' wks' : '—'}</td>
+       <td>${b.pen_name||'—'}</td>
+       <td>${fmtDate(b.doc_date)}</td>`,
+      8, 'No batches match this filter');
+    if (rows.length) {
+      const tb = el('rpt-flock-tbody');
+      if (tb) tb.insertAdjacentHTML('beforeend',
+        `<tr style="background:#f0fdf4;font-weight:700;border-top:2px solid #bbf7d0">
+           <td colspan="4" style="text-align:right;color:var(--gray-500)">TOTAL</td>
+           <td>${rows.reduce((s,b)=>s+(+b.current_count||0),0).toLocaleString()}</td>
+           <td colspan="3"></td>
+         </tr>`);
+    }
+  }
+
+  if (tab === 'health') {
+    const evType   = el('rpt-health-type')?.value     || '';
+    const severity = el('rpt-health-severity')?.value || '';
+    let rows = healthData.records || [];
+    if (evType)   rows = rows.filter(r => r.event_type === evType);
+    if (severity) rows = rows.filter(r => r.severity   === severity);
+    if (el('rpt-health-count')) el('rpt-health-count').textContent = `${rows.length} records`;
+    tbody('rpt-health-tbody', rows, r =>
+      `<td>${fmtDate(r.event_date)}</td>
+       <td>${r.batch_code||'—'}</td>
+       <td>${(r.event_type||'').replace(/_/g,' ')}</td>
+       <td>${r.diagnosis||'—'}</td>
+       <td><span class="badge ${sevColor[r.severity]||'b-gray'}">${r.severity||'—'}</span></td>
+       <td>${r.affected_count||'—'}</td>
+       <td>${r.mortality_count||0}</td>
+       <td><span class="badge ${staColor[r.status]||'b-gray'}">${r.status||'—'}</span></td>
+       <td>${r.veterinarian_name||'—'}</td>`,
+      9, 'No health records match this filter');
+  }
+
+  if (tab === 'feed') {
+    const feedType = el('rpt-feed-type')?.value   || '';
+    const txType   = el('rpt-feed-txtype')?.value || '';
+    let rows = feedData.transactions || [];
+    if (feedType) rows = rows.filter(r => r.feed_type        === feedType);
+    if (txType)   rows = rows.filter(r => r.transaction_type === txType);
+    if (el('rpt-feed-count')) el('rpt-feed-count').textContent = `${rows.length} records`;
+    tbody('rpt-feed-tbody', rows, r =>
+      `<td>${fmtDate(r.transaction_date)}</td>
+       <td>${r.feed_type||'—'}</td>
+       <td><span class="badge ${r.transaction_type==='purchase'?'b-blue':r.transaction_type==='usage'?'b-orange':'b-gray'}">${r.transaction_type||'—'}</span></td>
+       <td>${(+r.quantity_kg||0).toLocaleString()} kg</td>
+       <td>${r.cost ? 'GHS '+fmt(r.cost) : '—'}</td>
+       <td>${r.batch_code||'—'}</td>
+       <td>${r.recorded_by_name||'—'}</td>`,
+      7, 'No feed records match this filter');
+  }
+}
+
+function clearRptFilter(tab) {
+  const ids = {
+    transactions: ['rpt-tx-type','rpt-tx-category','rpt-tx-status'],
+    eggs:         ['rpt-eggs-batch','rpt-eggs-type'],
+    flock:        ['rpt-flock-purpose','rpt-flock-status'],
+    health:       ['rpt-health-type','rpt-health-severity'],
+    feed:         ['rpt-feed-type','rpt-feed-txtype'],
+  };
+  (ids[tab]||[]).forEach(id => { const s = el(id); if (s) s.value = ''; });
+  filterReportTab(tab);
 }
 
 // ── Staff Alerts ──────────────────────────────────────────────
