@@ -695,14 +695,18 @@ async function loadHealth() {
     const data = await api('GET', '/health');
     const sevColor = { low:'b-green', medium:'b-yellow', high:'b-orange', critical:'b-red' };
     const staColor = { completed:'b-green', ongoing:'b-orange', monitoring:'b-blue' };
+    const evIcons = { vaccination:'💉', treatment:'💊', mortality:'💀', deworming:'🔬', biosecurity:'🛡️', inspection:'🔍', other:'📋' };
     tbody('health-tbody', data.records, r =>
       `<td>${fmtDate(r.event_date)}</td>
-       <td>${r.batch_code || '—'}</td>
-       <td><span class="badge b-blue">${r.event_type}</span></td>
+       <td><strong>${r.batch_code || '—'}</strong></td>
+       <td><span class="badge b-blue">${evIcons[r.event_type]||''} ${(r.event_type||'').replace(/_/g,' ')}</span></td>
+       <td style="max-width:180px;font-size:12px">${r.diagnosis || '—'}</td>
        <td><span class="badge ${sevColor[r.severity]||'b-gray'}">${r.severity}</span></td>
-       <td>${r.birds_affected}</td>
+       <td>${r.birds_affected || 0}</td>
+       <td>${r.birds_treated  || 0}</td>
+       <td>${r.cost ? 'GHS '+fmt(r.cost) : '—'}</td>
        <td><span class="badge ${staColor[r.status]||'b-gray'}">${r.status}</span></td>`,
-      6, 'No health events yet'
+      9, 'No health events yet'
     );
   } catch (e) { toast(e.message, 'error'); }
 }

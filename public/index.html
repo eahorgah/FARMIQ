@@ -420,44 +420,100 @@
         <div class="section-header">
           <h2 class="section-title"><span class="section-icon icon-health">💊</span> Health Records</h2>
         </div>
-        <div class="two-col">
-          <div class="card card-full">
-            <div class="card-title" style="margin-bottom:16px">Log Health Event</div>
+
+        <!-- ── Log Health Event Card ── -->
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-header" style="background:linear-gradient(135deg,#fff7ed,#ffedd5);border-bottom:1px solid #fed7aa;border-radius:12px 12px 0 0;padding:16px 20px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:22px">💊</span>
+              <div>
+                <div style="font-weight:700;font-size:16px;color:#c2410c">Log Health Event</div>
+                <div style="font-size:12px;color:#6b7280;margin-top:1px">Record vaccinations, treatments, mortality and other health events</div>
+              </div>
+            </div>
+          </div>
+          <div style="padding:20px">
             <form id="form-health">
-              <div class="form-group"><label>Batch</label><select id="health-batch" name="batch_id" required><option value="">Select batch</option></select></div>
-              <div class="form-row">
-                <div class="form-group"><label>Event Type</label>
+
+              <!-- Row 1: Batch + Event Type + Severity -->
+              <div class="income-form-grid-3" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
+                <div class="form-group" style="margin:0">
+                  <label>Batch</label>
+                  <select id="health-batch" name="batch_id" required>
+                    <option value="">Select batch</option>
+                  </select>
+                </div>
+                <div class="form-group" style="margin:0">
+                  <label>Event Type</label>
                   <select name="event_type" required>
-                    <option value="vaccination">Vaccination</option><option value="treatment">Treatment</option>
-                    <option value="mortality">Mortality</option><option value="deworming">Deworming</option>
-                    <option value="biosecurity">Biosecurity</option><option value="inspection">Inspection</option><option value="other">Other</option>
+                    <option value="vaccination">💉 Vaccination</option>
+                    <option value="treatment">💊 Treatment</option>
+                    <option value="mortality">💀 Mortality</option>
+                    <option value="deworming">🔬 Deworming</option>
+                    <option value="biosecurity">🛡️ Biosecurity</option>
+                    <option value="inspection">🔍 Inspection</option>
+                    <option value="other">📋 Other</option>
                   </select>
                 </div>
-                <div class="form-group"><label>Severity</label>
+                <div class="form-group" style="margin:0">
+                  <label>Severity</label>
                   <select name="severity">
-                    <option value="low">Low</option><option value="medium">Medium</option>
-                    <option value="high">High</option><option value="critical">Critical</option>
+                    <option value="low">🟢 Low</option>
+                    <option value="medium">🟡 Medium</option>
+                    <option value="high">🟠 High</option>
+                    <option value="critical">🔴 Critical</option>
                   </select>
                 </div>
               </div>
-              <div class="form-group"><label>Date</label><input type="date" name="event_date" required/></div>
-              <div class="form-group"><label>Diagnosis / Description</label><input type="text" name="diagnosis" placeholder="e.g. Newcastle disease vaccine"/></div>
-              <div class="form-row">
-                <div class="form-group"><label>Birds Affected</label><input type="number" name="birds_affected" min="0" value="0"/></div>
-                <div class="form-group"><label>Birds Treated</label><input type="number" name="birds_treated" min="0" value="0"/></div>
+
+              <!-- Row 2: Date + Diagnosis + Cost -->
+              <div class="income-form-grid-3" style="display:grid;grid-template-columns:1fr 2fr 1fr;gap:14px;margin-bottom:14px">
+                <div class="form-group" style="margin:0">
+                  <label>Date</label>
+                  <input type="date" name="event_date" required/>
+                </div>
+                <div class="form-group" style="margin:0">
+                  <label>Diagnosis / Description</label>
+                  <input type="text" name="diagnosis" placeholder="e.g. Newcastle disease vaccine"/>
+                </div>
+                <div class="form-group" style="margin:0">
+                  <label>Cost (GHS)</label>
+                  <input type="number" name="cost" min="0" step="0.01" placeholder="0.00"/>
+                </div>
               </div>
-              <div class="form-group"><label>Cost (GHS)</label><input type="number" name="cost" min="0" step="0.01" value="0"/></div>
-              <div class="form-group"><label>Notes</label><input type="text" name="notes" placeholder="Optional"/></div>
-              <button type="submit" class="btn btn-primary btn-full">Log Event</button>
+
+              <!-- Row 3: Birds Affected + Birds Treated + Notes -->
+              <div class="income-form-grid-3" style="display:grid;grid-template-columns:1fr 1fr 2fr;gap:14px;margin-bottom:18px">
+                <div class="form-group" style="margin:0">
+                  <label>Birds Affected</label>
+                  <input type="number" name="birds_affected" min="0" placeholder="0"/>
+                </div>
+                <div class="form-group" style="margin:0">
+                  <label>Birds Treated</label>
+                  <input type="number" name="birds_treated" min="0" placeholder="0"/>
+                </div>
+                <div class="form-group" style="margin:0">
+                  <label>Notes <small style="color:var(--gray-400)">(optional)</small></label>
+                  <input type="text" name="notes" placeholder="Additional details..."/>
+                </div>
+              </div>
+
+              <div style="display:flex;justify-content:flex-end">
+                <button type="submit" class="btn btn-primary" style="background:linear-gradient(135deg,#ea580c,#c2410c);padding:12px 36px;font-size:15px;font-weight:700;border-radius:10px">
+                  💊 Log Health Event
+                </button>
+              </div>
             </form>
           </div>
-          <div class="card">
-            <div class="card-header"><span class="card-title">Recent Events</span></div>
-            <table class="table">
-              <thead><tr><th>Date</th><th>Batch</th><th>Type</th><th>Severity</th><th>Affected</th><th>Status</th></tr></thead>
-              <tbody id="health-tbody"></tbody>
-            </table>
-          </div>
+        </div>
+
+        <!-- ── Recent Health Events Table ── -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Recent Health Events</span></div>
+          <table class="table">
+            <thead><tr><th>Date</th><th>Batch</th><th>Type</th><th>Diagnosis</th><th>Severity</th><th>Affected</th><th>Treated</th><th>Cost</th><th>Status</th></tr></thead>
+            <tbody id="health-tbody"></tbody>
+          </table>
         </div>
       </div>
 
