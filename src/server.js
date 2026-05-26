@@ -9,16 +9,19 @@ process.on('unhandledRejection', (err) => {
 });
 
 async function runMigrations() {
-  try {
-    await pool.query(`
-      ALTER TABLE egg_production_records
-        ADD COLUMN IF NOT EXISTS egg_type VARCHAR(20)
-        CHECK (egg_type IN ('jumbo','extra_large','large','medium','pullet'))
-    `);
-    console.log('Migrations OK');
-  } catch (err) {
-    console.error('Migration error:', err.message);
+  const migrations = [
+    `ALTER TABLE egg_production_records
+       ADD COLUMN IF NOT EXISTS egg_type VARCHAR(20)
+       CHECK (egg_type IN ('jumbo','extra_large','large','medium','pullet'))`,
+    `ALTER TABLE sales_records
+       ADD COLUMN IF NOT EXISTS egg_type VARCHAR(20)
+       CHECK (egg_type IN ('jumbo','extra_large','large','medium','pullet'))`,
+  ];
+  for (const sql of migrations) {
+    try { await pool.query(sql); }
+    catch (err) { console.error('Migration error:', err.message); }
   }
+  console.log('Migrations OK');
 }
 
 // Only start the HTTP server when running locally (not on Vercel/serverless)
