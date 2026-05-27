@@ -99,6 +99,23 @@ app.use('/api/settings',     settingsRoutes);
 
 app.get('/api/health-check', (req, res) => res.json({ status: 'ok', version: '1.0.0' }));
 
+// Temporary DB diagnostic — shows current schema + whether public.users is accessible
+app.get('/api/db-check', async (req, res) => {
+  try {
+    const schema   = await pool.query('SELECT current_schema() AS s, current_schemas(false) AS all_s');
+    const userCols = await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='users' ORDER BY ordinal_position`);
+    const userCount = await pool.query('SELECT COUNT(*) AS n FROM public.users');
+    res.json({
+      current_schema: schema.rows[0].s,
+      search_path: schema.rows[0].all_s,
+      public_users_columns: userCols.rows.map(r => r.column_name),
+      user_count: userCount.rows[0].n,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message, code: e.code });
+  }
+});
+
 
 app.get('/', (req, res) => {
   res.setHeader('Content-Type', 'text/html');
