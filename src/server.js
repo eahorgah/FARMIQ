@@ -8,7 +8,12 @@ process.on('unhandledRejection', (err) => {
   console.error('Unhandled rejection:', err.message);
 });
 
+// Guard so migrations only run once per Lambda instance (warm re-use)
+let _migrationsDone = false;
+
 async function runMigrations() {
+  if (_migrationsDone) return;
+  _migrationsDone = true;
   const migrations = [
     `ALTER TABLE egg_production_records
        ADD COLUMN IF NOT EXISTS egg_type VARCHAR(20)
@@ -24,13 +29,15 @@ async function runMigrations() {
   console.log('Migrations OK');
 }
 
+// Run migrations on every environment (including Vercel/serverless)
+// ADD COLUMN IF NOT EXISTS is idempotent — fast no-op once the column exists
+runMigrations().catch(err => console.error('Startup migration error:', err.message));
+
 // Only start the HTTP server when running locally (not on Vercel/serverless)
 if (process.env.VERCEL !== '1') {
-  runMigrations().then(() => {
-    app.listen(PORT, () => {
-      console.log(`FarmIQ API running on http://localhost:${PORT}`);
-      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-    });
+  app.listen(PORT, () => {
+    console.log(`FarmIQ API running on http://localhost:${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   });
 }
 

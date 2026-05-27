@@ -13,7 +13,13 @@ const errorHandler = (err, req, res, next) => {
   }
 
   const status = err.status || 500;
-  console.error(`[${status}] ${req.method} ${req.path} —`, err.stack || err.message);
+  // Log full detail including PG error code and table/column hint
+  console.error(`[${status}] ${req.method} ${req.path} — ${err.message}` +
+    (err.code    ? ` | pg_code=${err.code}` : '') +
+    (err.table   ? ` | table=${err.table}`  : '') +
+    (err.column  ? ` | column=${err.column}` : '') +
+    (err.detail  ? ` | detail=${err.detail}` : '')
+  );
   res.status(status).json({
     error: status === 500 ? 'Internal server error' : err.message,
   });
